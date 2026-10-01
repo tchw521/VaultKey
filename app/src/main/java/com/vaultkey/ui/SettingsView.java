@@ -126,19 +126,11 @@ public final class SettingsView {
             toolsPage.refresh();
             openSub(toolsPage.view());
         }));
-        main.addView(a.settingRow("shield", "严格识别登录框",
-                Prefs.getB("af_strict", true) ? "已开启，聊天框等不会误报" : "已关闭，任何输入框都可能提示填充",
-                v -> {
-                    Prefs.putB("af_strict", !Prefs.getB("af_strict", true));
-                    render();
-                }));
-        main.addView(a.settingRow("lock", "自动填充", "系统自动填充 + 无障碍辅助",
-                v -> a.startActivity(new Intent(a, AutofillGuideActivity.class))));
+        main.addView(a.settingRow("lock", "自动填充",
+                Prefs.getB("af_strict", true) ? "已开启 · 严格识别" : "已开启 · 宽松识别",
+                v -> autofillPage()));
         main.addView(a.settingRow("app", "自定义分类", "新建 / 改名 / 换图标 / 换色 / 删除", v -> cats(0, null)));
-        int miss = IconFill.missing(a).size();
-        main.addView(a.settingRow("image", "一键自动获取图标",
-                miss == 0 ? "所有账号都已有图标" : miss + " 个账号还没有图标，点此一键补全",
-                v -> a.startActivity(new android.content.Intent(a, IconFillActivity.class))));
+        main.addView(a.settingRow("image", "账号图标", iconSummary(), v -> iconPage()));
         main.addView(a.settingRow("app", "悬浮窗",
                 FloatService.enabled()
                         ? (FloatService.canDraw(a) ? "已开启，在其他应用上方可直接取账号" : "已开启，但还缺悬浮窗权限")
@@ -181,27 +173,10 @@ public final class SettingsView {
             }));
         }
 
-        main.addView(a.section("隐私设置"));
-        main.addView(toggleRow("camera", "禁止截屏",
-                Prefs.getB("block_capture", true) ? "已开启，界面无法被截屏或录屏" : "已关闭，允许截屏",
-                Prefs.getB("block_capture", true), (on) -> {
-            Prefs.putB("block_capture", on);
-            a.applySecure();
-            render();
-        }));
-        main.addView(a.settingRow("key", "自动锁定", lockName(), v -> {
-            String[] o = {"1 分钟", "3 分钟", "5 分钟", "15 分钟", "30 分钟", "永不（不推荐）"};
-            final int[] vv = {60000, 180000, 300000, 900000, 1800000, Integer.MAX_VALUE};
-            new android.app.AlertDialog.Builder(a).setTitle("自动锁定").setItems(o, (d, w) -> {
-                Prefs.putI("lock_ms", vv[w]);
-                render();
-            }).show();
-        }));
-        main.addView(toggleRow("shield", "切到后台立即锁定", "离开界面立刻上锁",
-                Prefs.getB("lock_on_resume", false), (on) -> {
-            Prefs.putB("lock_on_resume", on);
-            render();
-        }));
+        main.addView(a.section("安全"));
+        main.addView(a.settingRow("fingerprint", "生物解锁", bioSummary(), v -> bioPage()));
+        main.addView(a.settingRow("edit", "修改主密码", "全部数据会重新加密", v -> changePwd()));
+        main.addView(a.settingRow("key", "自动锁定", lockName(), v -> lockPage()));
         main.addView(a.settingRow("copy", "剪贴板自动清空", Prefs.getI("clip_sec", 45) + " 秒后清空", v -> {
             String[] o = {"30 秒", "45 秒", "60 秒", "120 秒"};
             final int[] vv = {30, 45, 60, 120};
@@ -210,33 +185,21 @@ public final class SettingsView {
                 render();
             }).show();
         }));
-        main.addView(a.settingRow("edit", "修改主密码", "全部数据会重新加密", v -> changePwd()));
-        main.addView(switchRow("image", "新增账号后自动获取图标",
-                "保存后后台补图标，本地优先", "auto_icon", true));
-        main.addView(a.settingRow("fingerprint", "指纹解锁",
-                KeystoreHelper.hasBio(a) ? "已启用，点击关闭"
-                        : (Biometric.canStrong(a) ? "未启用，点击开启" : "该设备不支持"),
-                v -> toggleBio()));
-        main.addView(a.settingRow("person", "人脸解锁",
-                faceSub(), v -> toggleFace()));
-        main.addView(a.settingRow("float", "启动自动解锁",
-                unlockModeText(), v -> pickUnlockMode()));
-        main.addView(a.settingRow("info", "生物识别自检",
-                "看设备到底支持哪种、开了哪个", v ->
-                        new android.app.AlertDialog.Builder(a)
-                                .setTitle("生物识别自检")
-                                .setMessage(Biometric.diag(a))
-                                .setPositiveButton("好", null)
-                                .setNeutralButton("系统设置", (x, y) -> Biometric.openEnroll(a))
-                                .show()));
+        main.addView(toggleRow("camera", "禁止截屏",
+                Prefs.getB("block_capture", true) ? "已开启，界面无法被截屏或录屏" : "已关闭，允许截屏",
+                Prefs.getB("block_capture", true), (on) -> {
+            Prefs.putB("block_capture", on);
+            a.applySecure();
+            render();
+        }));
 
         /* 「外观」整组已移除：换皮肤挪到顶栏右上角的调色板图标。
            设置中心只保留「关于 / 清空回收站」等真正适合放设置的内容。 */
 
         main.addView(a.section("关于"));
         main.addView(a.settingRow("shield", "关于应用", "v" + appVer() + " · 开发者 tchw521", v -> aboutDialog()));
-        main.addView(a.settingRow("download", "下载最新版", "GitHub Releases / 蓝奏云网盘", v -> checkUpdate()));
-        main.addView(a.settingRow("cloud", "蓝奏云下载", "国内直连更快（密码 1111）", v -> lanzouDialog()));
+        main.addView(a.settingRow("download", "检查更新",
+                "当前 v" + appVer() + " · GitHub / 蓝奏云", v -> checkUpdate()));
         main.addView(a.settingRow("gift", "赞助作者", "如果密盒帮到了你", v -> sponsorDialog()));
         main.addView(a.settingRow("trash", "清空回收站", "彻底删除已删除的账号与卡片", v -> {
             Db.get(a).emptyTrash();
@@ -1298,6 +1261,188 @@ public final class SettingsView {
         } catch (Exception e) {
             a.toast("保存失败，可截图后扫码");
         }
+    }
+
+
+    /* ================================================================
+     *  合并后的子页
+     *  原来同类功能散在主列表里占好几行，收进子页后主列表只剩一行入口。
+     * ================================================================ */
+
+    /* ---------------- 生物解锁（原 4 项合 1） ---------------- */
+
+    private String bioSummary() {
+        boolean fp = KeystoreHelper.hasBio(a);
+        boolean fc = KeystoreHelper.hasFace(a);
+        if (fp && fc) return "指纹 + 人脸已启用 · 启动" + unlockModeText();
+        if (fp) return "指纹已启用 · 启动" + unlockModeText();
+        if (fc) return "人脸已启用 · 启动" + unlockModeText();
+        if (Biometric.level(a) == Biometric.NONE) return "该设备不支持生物识别";
+        return "未启用，点此设置";
+    }
+
+    private void bioPage() {
+        LinearLayout p = subPage("生物解锁");
+        LinearLayout box = pageBox(p);
+
+        box.addView(a.section("解锁方式"));
+        box.addView(a.settingRow("fingerprint", "指纹解锁",
+                KeystoreHelper.hasBio(a) ? "已启用，点击关闭"
+                        : (Biometric.canStrong(a) ? "未启用，点击开启" : "该设备不支持"),
+                v -> toggleBio()));
+        box.addView(a.settingRow("person", "人脸解锁", faceSub(), v -> toggleFace()));
+        box.addView(a.settingRow("float", "启动自动解锁", unlockModeText(), v -> pickUnlockMode()));
+
+        box.addView(a.section("原理"));
+        TextView note = noteText("指纹属「强生物特征」，可携带密钥，安全性更高；\n"
+                + "人脸多属「弱生物特征」，Android 不允许它携带密钥，\n"
+                + "所以人脸是先验证本人、再从硬件区取出主密钥，略低于指纹。\n\n"
+                + "两者都开时，按上面的「启动自动解锁」决定先弹哪个。");
+        box.addView(note);
+
+        box.addView(a.section("排查"));
+        box.addView(a.settingRow("info", "生物识别自检",
+                "看设备到底支持哪种、开了哪个", v ->
+                        new android.app.AlertDialog.Builder(a)
+                                .setTitle("生物识别自检")
+                                .setMessage(Biometric.diag(a))
+                                .setPositiveButton("好", null)
+                                .setNeutralButton("系统设置", (x, y) -> Biometric.openEnroll(a))
+                                .show()));
+        box.addView(a.settingRow("settings", "去系统设置录入",
+                "打开系统的「指纹、面部与密码」", v -> Biometric.openEnroll(a)));
+
+        openSub(p);
+    }
+
+    /* ---------------- 自动填充（原 2 项合 1） ---------------- */
+
+    private void autofillPage() {
+        LinearLayout p = subPage("自动填充");
+        LinearLayout box = pageBox(p);
+
+        box.addView(a.section("识别"));
+        box.addView(toggleRow("shield", "严格识别登录框",
+                "开启后聊天框、搜索框等不会误弹填充提示",
+                Prefs.getB("af_strict", true), on -> {
+            Prefs.putB("af_strict", on);
+            render();
+        }));
+        box.addView(noteText("关闭后任何输入框都可能提示填充，\n"
+                + "少数 App 的登录框要靠这个才能识别到。"));
+
+        box.addView(a.section("开启方式"));
+        box.addView(a.settingRow("lock", "系统自动填充",
+                "Android 8+ 推荐，由系统识别登录框",
+                v -> a.startActivity(new Intent(a, AutofillGuideActivity.class))));
+
+        openSub(p);
+    }
+
+    /* ---------------- 账号图标（原 2 项合 1） ---------------- */
+
+    private String iconSummary() {
+        int miss = IconFill.missing(a).size();
+        boolean auto = Prefs.getB("auto_icon", true);
+        if (miss == 0) return auto ? "自动获取已开 · 图标齐全" : "自动获取已关 · 图标齐全";
+        return auto ? "自动获取已开 · " + miss + " 个待补全" : "自动获取已关 · " + miss + " 个待补全";
+    }
+
+    private void iconPage() {
+        LinearLayout p = subPage("账号图标");
+        LinearLayout box = pageBox(p);
+
+        box.addView(a.section("自动获取"));
+        box.addView(switchRow("image", "新增账号后自动获取图标",
+                "保存后后台补图标，本地优先", "auto_icon", true));
+        box.addView(noteText("图标优先从本机已装应用取，取不到才联网。"));
+
+        int miss = IconFill.missing(a).size();
+        box.addView(a.section("补全"));
+        box.addView(a.settingRow("image", "一键补全缺失图标",
+                miss == 0 ? "所有账号都已有图标" : miss + " 个账号还没有图标",
+                v -> a.startActivity(new android.content.Intent(a, IconFillActivity.class))));
+
+        openSub(p);
+    }
+
+    /* ---------------- 自动锁定（原 2 项合 1） ---------------- */
+
+    private void lockPage() {
+        LinearLayout p = subPage("自动锁定");
+        LinearLayout box = pageBox(p);
+
+        box.addView(a.section("闲置时长"));
+        String[] names = {"1 分钟", "3 分钟", "5 分钟", "15 分钟", "30 分钟", "永不（不推荐）"};
+        final int[] vv = {60000, 180000, 300000, 900000, 1800000, Integer.MAX_VALUE};
+        int cur = Prefs.getI("lock_ms", 180000);
+        int sel = 1;
+        for (int i = 0; i < vv.length; i++) if (vv[i] == cur) sel = i;
+        box.addView(pickRow(names, sel, i -> {
+            Prefs.putI("lock_ms", vv[i]);
+            render();
+        }));
+
+        box.addView(a.section("更快上锁"));
+        box.addView(toggleRow("shield", "切到后台立即锁定",
+                "离开界面立刻上锁，不等上面的时长",
+                Prefs.getB("lock_on_resume", false), on -> {
+            Prefs.putB("lock_on_resume", on);
+            render();
+        }));
+
+        openSub(p);
+    }
+
+    /* ---------------- 子页通用零件 ---------------- */
+
+    /** 建一个带标题的子页容器 */
+    private LinearLayout subPage(String title) {
+        LinearLayout p = new LinearLayout(a);
+        p.setOrientation(LinearLayout.VERTICAL);
+        p.setBackgroundColor(Ui.attr(a, R.attr.bgColor));
+        android.widget.ScrollView sv = new android.widget.ScrollView(a);
+        p.addView(sv, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        LinearLayout box = new LinearLayout(a);
+        box.setOrientation(LinearLayout.VERTICAL);
+        sv.addView(box);
+        TextView t = a.title(title, 20);
+        t.setPadding(0, 0, 0, Ui.dp(a, 12));
+        box.addView(t);
+        p.setTag(box);
+        return p;
+    }
+
+    private LinearLayout pageBox(LinearLayout p) {
+        return (LinearLayout) p.getTag();
+    }
+
+    private TextView noteText(String txt) {
+        TextView n = new TextView(a);
+        n.setText(txt);
+        n.setTextSize(11.5f);
+        n.setTextColor(Ui.attr(a, R.attr.textColor2));
+        n.setPadding(Ui.dp(a, 2), Ui.dp(a, 4), Ui.dp(a, 2), 0);
+        return n;
+    }
+
+    /** 单选行：一组文字，选中项高亮 */
+    private View pickRow(String[] names, int sel, final OnIdx cb) {
+        LinearLayout l = new LinearLayout(a);
+        l.setOrientation(LinearLayout.VERTICAL);
+        for (int i = 0; i < names.length; i++) {
+            final int idx = i;
+            TextView t = new TextView(a);
+            t.setText((i == sel ? "✓  " : "    ") + names[i]);
+            t.setTextSize(14);
+            t.setTextColor(i == sel ? Ui.accent(a) : Ui.attr(a, R.attr.textColor));
+            t.setPadding(Ui.dp(a, 14), Ui.dp(a, 11), Ui.dp(a, 14), Ui.dp(a, 11));
+            t.setOnClickListener(v -> cb.on(idx));
+            l.addView(t);
+        }
+        l.setBackground(Ui.glass(a, 16, R.attr.cardColor, R.attr.strokeColor));
+        return l;
     }
 
 }
