@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 长按桌面图标弹出的快捷方式（Android 7.1+） -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="search"
+        android:enabled="true"
+        android:icon="@drawable/ic_search"
+        android:shortcutShortLabel="@string/sc_search_short"
+        android:shortcutLongLabel="@string/sc_search_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.vaultkey.app"
+            android:targetClass="com.vaultkey.ui.UnlockActivity"
+            android:data="vaultkey://search" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="new_entry"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/sc_new_short"
+        android:shortcutLongLabel="@string/sc_new_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.vaultkey.app"
+            android:targetClass="com.vaultkey.ui.UnlockActivity"
+            android:data="vaultkey://new" />
+    </shortcut>
+
+</shortcuts>

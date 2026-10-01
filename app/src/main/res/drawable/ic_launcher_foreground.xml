@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  与启动图标统一的盾牌标志（用于小部件、快捷方式、设置页预览）。
+  造型同新版图标：浅蓝灰盾牌轮廓 + 同心圆（外圈浅灰 / 内圈近黑 / 中心亮蓝）。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+
+  <!-- 盾牌外轮廓：浅蓝灰 -->
+  <path android:fillColor="#FFB8C6D6"
+      android:pathData="M12,2 L20,5 V12 C20,16.5 16.5,20.5 12,22 C7.5,20.5 4,16.5 4,12 V5 Z" />
+
+  <!-- 盾牌内底：深色玻璃 -->
+  <path android:fillColor="#FF141A1F"
+      android:pathData="M12,4.2 L18,6.6 V12 C18,15.5 15.2,18.7 12,20 C8.8,18.7 6,15.5 6,12 V6.6 Z" />
+
+  <!-- 同心圆 · 外圈：浅灰 -->
+  <path android:fillColor="#FF9FB3C8"
+      android:pathData="M12,8.3 a3.7,3.7 0 1,0 0,7.4 a3.7,3.7 0 1,0 0,-7.4 Z" />
+
+  <!-- 同心圆 · 内圈：近黑 -->
+  <path android:fillColor="#FF0B1014"
+      android:pathData="M12,9.9 a2.1,2.1 0 1,0 0,4.2 a2.1,2.1 0 1,0 0,-4.2 Z" />
+
+  <!-- 同心圆 · 轴心：亮蓝 -->
+  <path android:fillColor="#FF4285F4"
+      android:pathData="M12,11.2 a0.8,0.8 0 1,0 0,1.6 a0.8,0.8 0 1,0 0,-1.6 Z" />
+</vector>

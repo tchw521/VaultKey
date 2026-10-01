@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <color name="accent">#00B8A0</color>
+  <color name="accent2">#5EDCC4</color>
+  <color name="accent3">#38BDF8</color>
+  <color name="ok">#22C55E</color>
+  <color name="warn">#F59E0B</color>
+  <color name="bad">#EF4444</color>
+  <!-- light -->
+  <color name="l_bg">#F1F6F5</color>
+  <color name="l_bg2">#FFFFFF</color>
+  <color name="l_card">#F0FFFFFF</color>
+  <color name="l_card2">#E8F5F3</color>
+  <color name="l_text">#0E1A18</color>
+  <color name="l_text2">#6A7C79</color>
+  <color name="l_stroke">#5A00B8A0</color>
+  <color name="l_shadow">#14001818</color>
+  <!-- dark -->
+  <color name="d_bg">#08110F</color>
+  <color name="d_bg2">#0E1A18</color>
+  <color name="d_card">#1AFFFFFF</color>
+  <color name="d_card2">#22FFFFFF</color>
+  <color name="d_text">#EFF6F4</color>
+  <color name="d_text2">#93A6A2</color>
+  <color name="d_stroke">#28FFFFFF</color>
+  <color name="d_shadow">#40000000</color>
+  <color name="transparent">#00000000</color>
+</resources>

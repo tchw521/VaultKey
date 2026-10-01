@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 桌面小部件：点一下直接进密盒搜索页 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:background="@drawable/widget_bg">
+
+    <ImageView
+        android:id="@+id/w_icon"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:src="@drawable/ic_launcher_foreground"
+        android:contentDescription="密盒" />
+
+    <TextView
+        android:id="@+id/w_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="9dp"
+        android:text="搜索密盒"
+        android:textSize="13sp"
+        android:textColor="#FF0E1A18"
+        android:ellipsize="end"
+        android:singleLine="true" />
+
+    <ImageView
+        android:id="@+id/w_go"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:src="@drawable/ic_search"
+        android:contentDescription="搜索" />
+</LinearLayout>

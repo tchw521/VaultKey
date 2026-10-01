@@ -1,0 +1,59 @@
+name: 构建并发布 APK
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'          # 推送 v3.13.0 这样的标签即触发
+  workflow_dispatch:       # 也允许在网页上手动点一下
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # 需要往 Release 里传文件
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 装 build-tools 与 platform 34
+        run: |
+          sdkmanager --install "build-tools;34.0.0" "platforms;android-34" > /dev/null
+          echo "y" | sdkmanager --licenses > /dev/null 2>&1 || true
+
+      - name: 构建 APK
+        run: |
+          chmod +x build_manual.sh
+          ANDROID_HOME=$ANDROID_HOME SIGN=0 ./build_manual.sh
+
+      - name: 取出版本号
+        id: ver
+        run: |
+          V=$(grep '^VERSION_NAME=' version.properties | cut -d= -f2 | tr -d ' \r')
+          echo "name=$V" >> $GITHUB_OUTPUT
+          echo "版本号：$V"
+
+      - name: 发布到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 密盒 v${{ steps.ver.outputs.name }}
+          body_path: RELEASE_NOTES.md
+          files: 密盒-VaultKey-v${{ steps.ver.outputs.name }}.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 顺带校验一下产物
+        run: |
+          APK=$(ls 密盒-VaultKey-v*.apk | head -1)
+          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging "$APK" | head -3

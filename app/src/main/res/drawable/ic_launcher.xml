@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 低版本系统（Android 8.0 以下）用的方形图标，配色与新自适应图标一致 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+  <gradient android:startColor="#FF2A3138" android:centerColor="#FF141A1F"
+      android:endColor="#FF080C0F" android:angle="315"/>
+  <corners android:radius="100dp"/>
+  <stroke android:width="1dp" android:color="#40FFFFFF"/>
+</shape>

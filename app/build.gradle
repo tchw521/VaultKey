@@ -1,0 +1,39 @@
+plugins {
+    id 'com.android.application'
+}
+android {
+    namespace 'com.vaultkey'
+    compileSdk 34
+    buildToolsVersion '34.0.0'
+    defaultConfig {
+        applicationId 'com.vaultkey.app'
+        minSdk 28
+        targetSdk 34
+        versionCode 3
+        versionName '2.0.0'
+    }
+    signingConfigs {
+        release {
+            storeFile file('/data/workspace/vaultkey.jks')
+            storePassword 'vaultkey'
+            keyAlias 'vaultkey'
+            keyPassword 'vaultkey'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint { abortOnError false; checkReleaseBuilds false }
+}

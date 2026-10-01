@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">密盒</string>
+  <string name="unlock">解锁</string>
+  <string name="set_master_pwd">设置主密码</string>
+  <string name="master_pwd_hint">主密码（至少 6 位）</string>
+  <string name="confirm_pwd">确认主密码</string>
+  <string name="pwd_not_match">两次输入不一致</string>
+  <string name="pwd_too_short">主密码至少 6 位</string>
+  <string name="wrong_pwd">主密码错误</string>
+  <string name="search_hint">搜索账号 / 网站 / 备注</string>
+  <string name="add">添加</string>
+  <string name="settings">设置</string>
+  <string name="backup">坚果云备份</string>
+  <string name="all">全部</string>
+  <string name="fav">收藏</string>
+    <string name="sc_search_short">搜索</string>
+    <string name="sc_search_long">搜索账号</string>
+    <string name="sc_new_short">新增账号</string>
+    <string name="sc_new_long">新增一条账号</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="12dp"
+    android:background="@drawable/af_bg">
+    <TextView android:id="@+id/af_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#FFFFFFFF" android:textSize="15sp" android:textStyle="bold" android:singleLine="true"/>
+    <TextView android:id="@+id/af_sub" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#B3FFFFFF" android:textSize="12sp" android:singleLine="true"/>
+</LinearLayout>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+    <item name="bgColor">@color/l_bg</item>
+    <item name="bgColor2">@color/l_bg2</item>
+    <item name="cardColor">@color/l_card</item>
+    <item name="cardColor2">@color/l_card2</item>
+    <item name="textColor">@color/l_text</item>
+    <item name="textColor2">@color/l_text2</item>
+    <item name="strokeColor">@color/l_stroke</item>
+    <item name="shadowColor">@color/l_shadow</item>
+    <item name="android:windowBackground">@color/l_bg</item>
+    <item name="android:navigationBarColor">@color/l_bg</item>
+    <item name="android:statusBarColor">@color/l_bg</item>
+    <item name="android:windowLightStatusBar">true</item>
+    <item name="android:windowLightNavigationBar">true</item>
+    <item name="android:colorAccent">@color/accent</item>
+  </style>
+</resources>
