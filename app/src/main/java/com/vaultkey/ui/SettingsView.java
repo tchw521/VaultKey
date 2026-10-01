@@ -3,6 +3,7 @@ package com.vaultkey.ui;
 import android.graphics.Bitmap;
 
 import android.content.Context;
+import android.os.Build;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -213,7 +214,11 @@ public final class SettingsView {
         main.addView(switchRow("image", "新增账号后自动获取图标",
                 "保存后后台补图标，本地优先", "auto_icon", true));
         main.addView(a.settingRow("fingerprint", "指纹解锁",
-                KeystoreHelper.hasBio(a) ? "已启用，点击关闭" : "未启用，点击开启", v -> toggleBio()));
+                KeystoreHelper.hasBio(a) ? "已启用，点击关闭"
+                        : (Biometric.canStrong(a) ? "未启用，点击开启" : "该设备不支持"),
+                v -> toggleBio()));
+        main.addView(a.settingRow("person", "人脸解锁",
+                faceSub(), v -> toggleFace()));
 
         /* 「外观」整组已移除：换皮肤挪到顶栏右上角的调色板图标。
            设置中心只保留「关于 / 清空回收站」等真正适合放设置的内容。 */
@@ -961,6 +966,52 @@ public final class SettingsView {
                     KeystoreHelper.clearBio(a);
                     a.toast("已更新，请重新启用指纹");
                 }).setNegativeButton("取消", null).show();
+    }
+
+    /* ---------------- 人脸解锁 ---------------- */
+
+    private String faceSub() {
+        if (KeystoreHelper.hasFace(a)) return "已启用，点击关闭";
+        if (Build.VERSION.SDK_INT < 30) return "需 Android 11+";
+        return Biometric.canWeak(a) ? "未启用，点击开启" : "未录入人脸";
+    }
+
+    private void toggleFace() {
+        if (KeystoreHelper.hasFace(a)) {
+            KeystoreHelper.clearFace(a);
+            a.toast("已关闭人脸解锁");
+            render();
+            return;
+        }
+        if (Build.VERSION.SDK_INT < 30) {
+            a.toast("人脸解锁需 Android 11 及以上");
+            return;
+        }
+        if (!Biometric.canWeak(a)) {
+            a.toast("未在系统里录入人脸（设置 → 生物识别与安全）");
+            return;
+        }
+        new android.app.AlertDialog.Builder(a)
+                .setTitle("启用人脸解锁？")
+                .setMessage("人脸属于「弱生物特征」，Android 不允许用它直接解密密钥，\n"
+                        + "所以人脸认证通过后，主密钥仍从硬件 Keystore 取出。\n\n"
+                        + "安全性略低于指纹（少了「密钥必须由生物特征解锁」这层）。\n"
+                        + "如果你的手机同时有指纹，建议优先用指纹。")
+                .setPositiveButton("仍要启用", (d, w) -> Biometric.authWeak(a,
+                        new Biometric.SimpleCb() {
+                            @Override public void ok() {
+                                byte[] mk = Session.key();
+                                if (mk != null && KeystoreHelper.saveFace(a, mk)) {
+                                    a.toast("已启用人脸解锁");
+                                } else a.toast("启用失败");
+                                render();
+                            }
+                            @Override public void fail(String m) {
+                                if (!"cancel".equals(m)) a.toast("未启用：" + m);
+                            }
+                        }))
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void toggleBio() {

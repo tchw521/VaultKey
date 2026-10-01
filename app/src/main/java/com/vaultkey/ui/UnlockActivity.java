@@ -100,7 +100,7 @@ public final class UnlockActivity extends BaseActivity {
         go.setOnClickListener(v -> { if (setup) doSetup(); else doUnlock(); });
         body.addView(go, lb);
 
-        if (!setup && KeystoreHelper.hasBio(this)) {
+        if (!setup && (KeystoreHelper.hasBio(this) || KeystoreHelper.hasFace(this))) {
             LinearLayout fp = new LinearLayout(this);
             fp.setOrientation(LinearLayout.HORIZONTAL);
             fp.setGravity(Gravity.CENTER);
@@ -111,19 +111,22 @@ public final class UnlockActivity extends BaseActivity {
             lf.gravity = Gravity.CENTER;
             fp.setLayoutParams(lf);
             android.widget.ImageView fi = new android.widget.ImageView(this);
-            fi.setImageDrawable(com.vaultkey.util.Ico.get(this, "fingerprint",
+            fi.setImageDrawable(com.vaultkey.util.Ico.get(this,
+                    KeystoreHelper.hasBio(this) ? "fingerprint" : "person",
                     Ui.accent(this), 22));
             fi.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 22), Ui.dp(this, 22)));
             fp.addView(fi);
             TextView ft = new TextView(this);
-            ft.setText("用指纹解锁");
+            ft.setText(KeystoreHelper.hasBio(this) ? "用指纹解锁" : "用人脸解锁");
             ft.setTextSize(14);
             ft.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
             ft.setTextColor(Ui.accent(this));
             ft.setPadding(Ui.dp(this, 10), 0, 0, 0);
             fp.addView(ft);
             Ui.press(fp);
-            fp.setOnClickListener(v -> bioUnlock());
+            fp.setOnClickListener(v -> {
+                if (KeystoreHelper.hasBio(this)) bioUnlock(); else faceUnlock();
+            });
             body.addView(fp);
         }
 
@@ -246,6 +249,20 @@ public final class UnlockActivity extends BaseActivity {
         });
     }
 
+    /** 人脸解锁：认证通过后直接取主密钥（弱生物特征拿不到 CryptoObject） */
+    private void faceUnlock() {
+        Biometric.authWeak(this, new Biometric.SimpleCb() {
+            @Override public void ok() {
+                byte[] mk = KeystoreHelper.loadFace(UnlockActivity.this);
+                if (mk == null) { toast("人脸校验失败，请用主密码"); return; }
+                Session.set(mk);
+                if (getIntent().getBooleanExtra("auth", false)) { authDone(); return; }
+                enter();
+            }
+            @Override public void fail(String m) { if (!"cancel".equals(m)) toast(m); }
+        });
+    }
+
     private void bioUnlock() {
         Cipher c = KeystoreHelper.decCipher(this);
         if (c == null) { toast("指纹不可用，请用主密码"); return; }
@@ -277,10 +294,20 @@ public final class UnlockActivity extends BaseActivity {
             enter();
             return;
         }
-        /* 启动即优先弹出指纹解锁（仅自动弹一次，失败后改用手输主密码） */
-        if (!setup && !auth && !bioTried && Session.key() == null && KeystoreHelper.hasBio(this)) {
-            bioTried = true;
-            body.post(() -> bioUnlock());
+        /*
+         * 启动即自动弹出生物识别（只自动弹一次，失败后改用手输主密码）。
+         *
+         * 优先指纹：它能带 CryptoObject，安全性更高。
+         * 没开指纹但开了人脸时才走人脸 —— 反过来会让已有指纹的用户
+         * 白白损失一层保护。
+         */
+        if (!setup && !auth && !bioTried && Session.key() == null) {
+            boolean hasFp = KeystoreHelper.hasBio(this);
+            boolean hasFace = KeystoreHelper.hasFace(this);
+            if (hasFp || hasFace) {
+                bioTried = true;
+                body.post(() -> { if (hasFp) bioUnlock(); else faceUnlock(); });
+            }
         }
     }
 
