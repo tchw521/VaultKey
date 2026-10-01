@@ -259,7 +259,12 @@ public final class UnlockActivity extends BaseActivity {
                 if (getIntent().getBooleanExtra("auth", false)) { authDone(); return; }
                 enter();
             }
-            @Override public void fail(String m) { if (!"cancel".equals(m)) toast(m); }
+            @Override public void fail(String m) {
+                if ("cancel".equals(m)) return;
+                toast(m);
+                /* 人脸没通过但装了指纹 —— 给一次指纹机会，别直接逼用户输主密码 */
+                if (KeystoreHelper.hasBio(UnlockActivity.this)) body.post(UnlockActivity.this::bioUnlock);
+            }
         });
     }
 
@@ -304,10 +309,15 @@ public final class UnlockActivity extends BaseActivity {
         if (!setup && !auth && !bioTried && Session.key() == null) {
             boolean hasFp = KeystoreHelper.hasBio(this);
             boolean hasFace = KeystoreHelper.hasFace(this);
-            if (hasFp || hasFace) {
-                bioTried = true;
-                body.post(() -> { if (hasFp) bioUnlock(); else faceUnlock(); });
-            }
+            int mode = Prefs.getI("unlock_mode", 0);   // 0 人脸优先 / 1 指纹优先 / 2 不自动
+            if (mode == 2 || (!hasFp && !hasFace)) return;
+
+            bioTried = true;
+            body.post(() -> {
+                /* 人脸优先：先试人脸，没开人脸再退回指纹 */
+                if (mode == 0) { if (hasFace) faceUnlock(); else bioUnlock(); }
+                else           { if (hasFp)   bioUnlock(); else faceUnlock(); }
+            });
         }
     }
 

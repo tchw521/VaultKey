@@ -219,6 +219,14 @@ public final class SettingsView {
                 v -> toggleBio()));
         main.addView(a.settingRow("person", "人脸解锁",
                 faceSub(), v -> toggleFace()));
+        main.addView(a.settingRow("float", "启动自动解锁",
+                unlockModeText(), v -> pickUnlockMode()));
+        main.addView(a.settingRow("info", "生物识别自检",
+                "看设备到底支持哪种、开了哪个", v ->
+                        new android.app.AlertDialog.Builder(a)
+                                .setTitle("生物识别自检")
+                                .setMessage(Biometric.diag(a))
+                                .setPositiveButton("好", null).show()));
 
         /* 「外观」整组已移除：换皮肤挪到顶栏右上角的调色板图标。
            设置中心只保留「关于 / 清空回收站」等真正适合放设置的内容。 */
@@ -969,6 +977,30 @@ public final class SettingsView {
     }
 
     /* ---------------- 人脸解锁 ---------------- */
+
+    /* ---------------- 启动自动解锁 ---------------- */
+
+    private String unlockModeText() {
+        switch (Prefs.getI("unlock_mode", 0)) {
+            case 0:  return "人脸优先";
+            case 1:  return "指纹优先";
+            default: return "关闭";
+        }
+    }
+
+    private void pickUnlockMode() {
+        String[] items = {"人脸优先（启动先看脸）", "指纹优先（更安全）", "关闭（总是输主密码）"};
+        int cur = Prefs.getI("unlock_mode", 0);
+        new android.app.AlertDialog.Builder(a)
+                .setTitle("启动自动解锁")
+                .setSingleChoiceItems(items, cur, (d, w) -> {
+                    Prefs.putI("unlock_mode", w);
+                    d.dismiss();
+                    render();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
 
     private String faceSub() {
         if (KeystoreHelper.hasFace(a)) return "已启用，点击关闭";

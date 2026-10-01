@@ -65,8 +65,14 @@ public final class Biometric {
 
     /**
      * 设备有没有可用的弱生物特征（人脸）。
-     * 注意：只问「有没有录入」，不问「是不是人脸」——系统不透露具体类型，
-     * 所以提示文案统一写「人脸 / 生物识别」，不写死。
+     *
+     * ⚠️ 实测到的坑：BIOMETRIC_WEAK = 0xFF，BIOMETRIC_STRONG = 0x0F，
+     * WEAK 的位**完全包含** STRONG。所以这个查询在有指纹的设备上也返回 true
+     * ——它实际问的是「有没有任何可用生物特征」，而不是「有没有人脸」。
+     *
+     * Android 不提供按类型（指纹 / 人脸）筛选的 API，这是平台限制。
+     * 因此只能：想用弱认证通道时传 WEAK，至于系统最终弹指纹还是人脸，
+     * 由系统决定（多数设备优先弹更强的那个）。
      */
     public static boolean canWeak(Context c) {
         if (Build.VERSION.SDK_INT < 30) return false;   // WEAK 常量 API 30 才有
@@ -161,8 +167,13 @@ public final class Biometric {
                             .setTitle("人脸解锁密盒")
                             .setSubtitle("看一眼即可解锁")
                             .setNegativeButton("用主密码", a.getMainExecutor(), (d, w) -> cb.fail("cancel"));
-            /* WEAK 才会带上人脸；只允许 WEAK 而排除 STRONG，
-               否则已录指纹的设备会优先弹指纹框。 */
+            /*
+             * 传 WEAK 且不带 CryptoObject —— 这是唯一能让弱生物特征（人脸）
+             * 走进来的组合。
+             *
+             * 注意 WEAK(0xFF) 位包含 STRONG(0x0F)，所以有指纹的设备上
+             * 系统仍可能弹指纹框。Android 没有「只许人脸」的开关，做不到。
+             */
             b.setAllowedAuthenticators(android.hardware.biometrics.BiometricManager
                     .Authenticators.BIOMETRIC_WEAK);
             android.hardware.biometrics.BiometricPrompt p = b.build();
@@ -177,7 +188,66 @@ public final class Biometric {
                         @Override public void onAuthenticationFailed() { }
                     });
         } catch (Throwable t) {
-            cb.fail("人脸不可用");
+            cb.fail(unavailableReason(t));
         }
+    }
+
+    /* ---------------- 诊断 ---------------- */
+
+    /** 把 canAuthenticate 的返回码翻译成人话 */
+    private static String codeText(int r) {
+        switch (r) {
+            case 0:  return "可用";
+            case 1:  return "无生物识别硬件";
+            case 11: return "未录入任何生物特征";
+            case 12: return "暂不可用（稍后再试）";
+            case 15: return "需要系统安全更新";
+            default: return "未知状态（" + r + "）";
+        }
+    }
+
+    private static String unavailableReason(Throwable t) {
+        String m = t.getMessage();
+        if (m == null || m.isEmpty()) m = t.getClass().getSimpleName();
+        String low = m.toLowerCase();
+        if (low.contains("crypto") || low.contains("weak"))
+            return "该认证方式不支持携带密钥";
+        return m;
+    }
+
+    /** 给设置页用的自检文本，用户报问题时可直接抄给我 */
+    public static String diag(Context c) {
+        StringBuilder s = new StringBuilder();
+        s.append("Android ").append(Build.VERSION.RELEASE).append(" (API ")
+         .append(Build.VERSION.SDK_INT).append(")\n\n");
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                android.hardware.biometrics.BiometricManager bm =
+                        (android.hardware.biometrics.BiometricManager)
+                                c.getSystemService(Context.BIOMETRIC_SERVICE);
+                if (bm != null) {
+                    int st = bm.canAuthenticate(android.hardware.biometrics.BiometricManager
+                            .Authenticators.BIOMETRIC_STRONG);
+                    int wk = bm.canAuthenticate(android.hardware.biometrics.BiometricManager
+                            .Authenticators.BIOMETRIC_WEAK);
+                    s.append("强认证(指纹类): ").append(codeText(st)).append("\n");
+                    s.append("弱认证(人脸类): ").append(codeText(wk)).append("\n\n");
+                    if (wk == 0 && st != 0) {
+                        s.append("→ 只检测到弱生物特征，人脸应该可用\n");
+                    } else if (st == 0 && wk == 0) {
+                        s.append("→ 指纹与人脸都可能可用；\n")
+                         .append("  系统弹哪个由它决定，App 无法指定\n");
+                    }
+                }
+            } catch (Throwable t) {
+                s.append("查询失败: ").append(t.getMessage()).append("\n");
+            }
+        } else {
+            s.append("API < 30，弱生物特征通道不可用\n");
+        }
+        s.append("\n本机已保存：\n");
+        s.append("· 指纹密钥副本: ").append(KeystoreHelper.hasBio(c) ? "有" : "无").append("\n");
+        s.append("· 人脸密钥副本: ").append(KeystoreHelper.hasFace(c) ? "有" : "无").append("\n");
+        return s.toString();
     }
 }
