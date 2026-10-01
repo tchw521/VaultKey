@@ -296,6 +296,22 @@ public final class Ico {
                 cv.drawLine(.68f * k, .20f * k, .84f * k, .20f * k, f);
                 cv.drawLine(.80f * k, .16f * k, .84f * k, .20f * k, f);
                 break;
+            case "gift": {
+                /* 礼物盒：盒盖 + 盒身 + 竖向丝带（留白分隔）+ 两个蝴蝶结 */
+                // 盒身
+                cv.drawRect(.20f * k, .42f * k, .80f * k, .82f * k, p);
+                // 盒盖
+                cv.drawRect(.16f * k, .30f * k, .84f * k, .43f * k, p);
+                // 竖向丝带：用盒身色描一条线，视觉上把盒子分成两半
+                f.setStyle(Paint.Style.STROKE);
+                f.setStrokeWidth(Math.max(1f, .05f * k));
+                f.setStrokeCap(Paint.Cap.BUTT);
+                cv.drawLine(.50f * k, .31f * k, .50f * k, .81f * k, f);
+                // 蝴蝶结：两个圆
+                cv.drawCircle(.43f * k, .28f * k, .08f * k, p);
+                cv.drawCircle(.57f * k, .28f * k, .08f * k, p);
+                break;
+            }
             case "star": {
                 Path st = new Path();
                 double[] ang = new double[10];

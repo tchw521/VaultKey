@@ -3,7 +3,7 @@
 一个**本地优先**的安卓密码管理器。账号密码、网址收藏都存在本机并加密，
 不依赖任何自建服务器；多设备同步走你自己的 WebDAV（坚果云等）。
 
-当前版本 v3.13.0，APK 约 284KB。
+当前版本 v3.13.1，APK 约 332KB。
 
 仓库地址：<https://github.com/tchw521/VaultKey>
 
@@ -60,7 +60,7 @@ git clone https://github.com/tchw521/VaultKey.git
 推送 tag 即自动编译并把 APK 挂到 Release：
 
 ```bash
-git tag v3.13.0 && git push origin v3.13.0
+git tag v3.13.1 && git push origin v3.13.1
 ```
 
 见 `.github/workflows/release.yml`。
@@ -103,6 +103,34 @@ app/src/main/java/com/vaultkey/
 - 最低 Android 9（API 28）——为了用 Keystore 的生物识别绑定
 - 卡片 OCR 只支持从相册选图：Android 14 起拍照拿不到原图
 - 悬浮窗密码默认打码：它浮在别的应用之上，可能被截屏
+
+## 作者
+
+**tchw521** —— <https://github.com/tchw521>
+
+## 支持这个项目
+
+如果密盒帮到了你，可以请作者喝杯咖啡 ☕
+
+| 支付宝 | 微信支付 |
+|---|---|
+| <img src="app/src/main/res/drawable/sponsor_alipay.webp" width="180"> | <img src="app/src/main/res/drawable/sponsor_wechat.webp" width="180"> |
+
+App 内也有入口：设置中心 → 关于 → 赞助作者。
+
+赞助完全是自愿的，不影响任何功能 —— 这个项目的全部代码一直都是开源的。
+
+## 免责声明
+
+本软件按「原样」提供，**不作任何明示或暗示的担保**。
+
+- 作者不对因设备故障、误操作或软件缺陷导致的数据丢失负责
+- 主密码不上传、无法找回 —— **一旦遗忘，数据将无法恢复**
+- 使用本软件产生的任何直接或间接损失，作者不承担责任
+
+**请务必自行备份。**
+
+完整条款见 [LICENSE](LICENSE)（MIT）。
 
 ## 历史版本的已知问题
 

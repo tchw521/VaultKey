@@ -218,11 +218,8 @@ public final class SettingsView {
            设置中心只保留「关于 / 清空回收站」等真正适合放设置的内容。 */
 
         main.addView(a.section("关于"));
-        main.addView(a.settingRow("shield", "关于应用", "v" + appVer() + " · AES-256-GCM", v ->
-                new android.app.AlertDialog.Builder(a).setTitle("关于密盒")
-                        .setMessage("密盒 v" + appVer() + "\n\n端到端加密：AES-256-GCM\n密钥派生：PBKDF2-HMAC-SHA256 "
-                                + (Crypto.ITER / 1000) + "k 次\n\n数据仅存本机，同步文件在上传前已用主密钥加密。")
-                        .setPositiveButton("好", null).show()));
+        main.addView(a.settingRow("shield", "关于应用", "v" + appVer() + " · 开发者 tchw521", v -> aboutDialog()));
+        main.addView(a.settingRow("gift", "赞助作者", "如果密盒帮到了你", v -> sponsorDialog()));
         main.addView(a.settingRow("trash", "清空回收站", "彻底删除已删除的账号与卡片", v -> {
             Db.get(a).emptyTrash();
             for (Db.Card c : Db.get(a).cardsRaw()) if (c.del) Db.get(a).hardDeleteCard(c.id);
@@ -991,4 +988,124 @@ public final class SettingsView {
         cfg.uiMode = (cfg.uiMode & ~Configuration.UI_MODE_NIGHT_MASK) | night;
         return c.createConfigurationContext(cfg);
     }
+
+    /* ---------------- 关于 / 免责声明 ---------------- */
+
+    private void aboutDialog() {
+        String msg = "密盒 VaultKey v" + appVer() + "\n"
+                + "开发者：tchw521\n"
+                + "开源地址：github.com/tchw521/VaultKey\n"
+                + "\n"
+                + "── 技术 ──\n"
+                + "端到端加密：AES-256-GCM\n"
+                + "密钥派生：PBKDF2-HMAC-SHA256 " + (Crypto.ITER / 1000) + "k 次\n"
+                + "主密钥由 Android Keystore 保护，支持指纹解锁\n"
+                + "数据仅存本机；同步文件在上传前已用主密钥加密\n"
+                + "\n"
+                + "── 免责声明 ──\n"
+                + "本软件按「原样」提供，不作任何明示或暗示的担保，\n"
+                + "包括但不限于对特定用途的适用性、不侵权性。\n"
+                + "\n"
+                + "作者不对以下情况负责：\n"
+                + "· 因设备故障、误操作、软件缺陷导致的数据丢失\n"
+                + "· 因忘记主密码而无法解密（主密码不上传、无法找回）\n"
+                + "· 因使用本软件产生的任何直接或间接损失\n"
+                + "\n"
+                + "请务必自行备份。主密码一旦遗忘，数据将无法恢复。\n"
+                + "\n"
+                + "完整条款见开源仓库 LICENSE（MIT）。";
+        new android.app.AlertDialog.Builder(a)
+                .setTitle("关于密盒")
+                .setMessage(msg)
+                .setPositiveButton("好", null)
+                .setNeutralButton("赞助", (d, w) -> sponsorDialog())
+                .show();
+    }
+
+    /* ---------------- 赞助 ---------------- */
+
+    private void sponsorDialog() {
+        LinearLayout root = new LinearLayout(a);
+        root.setOrientation(LinearLayout.VERTICAL);
+        int p = Ui.dp(a, 18);
+        root.setPadding(p, p, p, p);
+
+        TextView tip = new TextView(a);
+        tip.setText("如果密盒帮到了你，可以请作者喝杯咖啡 ☕");
+        tip.setTextSize(13);
+        tip.setTextColor(Ui.attr(a, R.attr.textColor2));
+        tip.setGravity(android.view.Gravity.CENTER);
+        root.addView(tip);
+
+        LinearLayout row = new LinearLayout(a);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER);
+        row.setPadding(0, Ui.dp(a, 14), 0, 0);
+        row.addView(payCell("支付宝", R.drawable.sponsor_alipay));
+        row.addView(payCell("微信支付", R.drawable.sponsor_wechat));
+        root.addView(row);
+
+        TextView note = new TextView(a);
+        note.setText("长按二维码可保存到相册，再用对应 App 扫一扫");
+        note.setTextSize(11);
+        note.setTextColor(Ui.attr(a, R.attr.textColor2));
+        note.setGravity(android.view.Gravity.CENTER);
+        note.setPadding(0, Ui.dp(a, 14), 0, 0);
+        root.addView(note);
+
+        new android.app.AlertDialog.Builder(a)
+                .setTitle("赞助作者")
+                .setView(root)
+                .setNegativeButton("关闭", null)
+                .show();
+    }
+
+    /** 一张支付二维码：图 + 名称，长按保存到相册 */
+    private View payCell(String name, int resId) {
+        LinearLayout cell = new LinearLayout(a);
+        cell.setOrientation(LinearLayout.VERTICAL);
+        cell.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        cell.setLayoutParams(lp);
+
+        int sz = Ui.dp(a, 130);
+        ImageView iv = new ImageView(a);
+        iv.setLayoutParams(new LinearLayout.LayoutParams(sz, sz));
+        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        iv.setImageResource(resId);
+        iv.setBackground(Ui.glass(a, 14, R.attr.cardColor, R.attr.strokeColor));
+        iv.setPadding(Ui.dp(a, 6), Ui.dp(a, 6), Ui.dp(a, 6), Ui.dp(a, 6));
+
+        /* 长按保存：扫码要切到另一个 App，在本弹窗里没法直接扫 */
+        iv.setOnLongClickListener(v -> {
+            savePayQr(resId, name);
+            return true;
+        });
+        cell.addView(iv);
+
+        TextView t = new TextView(a);
+        t.setText(name);
+        t.setTextSize(12);
+        t.setTextColor(Ui.attr(a, R.attr.textColor));
+        t.setGravity(android.view.Gravity.CENTER);
+        t.setPadding(0, Ui.dp(a, 8), 0, 0);
+        cell.addView(t);
+        return cell;
+    }
+
+    /** 把二维码存到相册（Android 9 及以下需要存储权限，失败就提示） */
+    private void savePayQr(int resId, String name) {
+        try {
+            android.graphics.Bitmap b = android.graphics.BitmapFactory.decodeResource(
+                    a.getResources(), resId);
+            String path = android.provider.MediaStore.Images.Media.insertImage(
+                    a.getContentResolver(), b, "密盒赞助-" + name, "密盒赞助二维码");
+            if (path != null) a.toast("已保存到相册");
+            else a.toast("保存失败");
+        } catch (Exception e) {
+            a.toast("保存失败，可截图后扫码");
+        }
+    }
+
 }
