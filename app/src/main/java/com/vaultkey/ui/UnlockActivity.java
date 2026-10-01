@@ -261,9 +261,19 @@ public final class UnlockActivity extends BaseActivity {
             }
             @Override public void fail(String m) {
                 if ("cancel".equals(m)) return;
-                toast(m);
                 /* 人脸没通过但装了指纹 —— 给一次指纹机会，别直接逼用户输主密码 */
-                if (KeystoreHelper.hasBio(UnlockActivity.this)) body.post(UnlockActivity.this::bioUnlock);
+                if (KeystoreHelper.hasBio(UnlockActivity.this)) {
+                    body.post(UnlockActivity.this::bioUnlock);
+                    return;
+                }
+                new android.app.AlertDialog.Builder(UnlockActivity.this)
+                        .setTitle("人脸解锁失败")
+                        .setMessage("系统返回：\n" + m + "\n\n"
+                                + "可去系统设置确认人脸已录入，或改用主密码。")
+                        .setPositiveButton("用主密码", null)
+                        .setNeutralButton("系统设置",
+                                (d, w) -> Biometric.openEnroll(UnlockActivity.this))
+                        .show();
             }
         });
     }

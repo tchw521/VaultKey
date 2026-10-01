@@ -226,7 +226,9 @@ public final class SettingsView {
                         new android.app.AlertDialog.Builder(a)
                                 .setTitle("生物识别自检")
                                 .setMessage(Biometric.diag(a))
-                                .setPositiveButton("好", null).show()));
+                                .setPositiveButton("好", null)
+                                .setNeutralButton("系统设置", (x, y) -> Biometric.openEnroll(a))
+                                .show()));
 
         /* 「外观」整组已移除：换皮肤挪到顶栏右上角的调色板图标。
            设置中心只保留「关于 / 清空回收站」等真正适合放设置的内容。 */
@@ -1019,8 +1021,16 @@ public final class SettingsView {
             a.toast("人脸解锁需 Android 11 及以上");
             return;
         }
+        /* canWeak 在有指纹的设备上也返回 true，所以这里不能拿它拦人 ——
+           真正能不能弹人脸，只有真去 authenticate 才知道。 */
         if (!Biometric.canWeak(a)) {
-            a.toast("未在系统里录入人脸（设置 → 生物识别与安全）");
+            new android.app.AlertDialog.Builder(a)
+                    .setTitle("未检测到生物特征")
+                    .setMessage("系统里没有录入指纹或人脸。\n\n"
+                            + "要去系统设置里录人脸吗？录完回来再点这里启用。")
+                    .setPositiveButton("去设置", (d, w) -> Biometric.openEnroll(a))
+                    .setNegativeButton("取消", null)
+                    .show();
             return;
         }
         new android.app.AlertDialog.Builder(a)
@@ -1039,7 +1049,15 @@ public final class SettingsView {
                                 render();
                             }
                             @Override public void fail(String m) {
-                                if (!"cancel".equals(m)) a.toast("未启用：" + m);
+                                if ("cancel".equals(m)) return;
+                                new android.app.AlertDialog.Builder(a)
+                                        .setTitle("人脸启用失败")
+                                        .setMessage("系统返回：\n" + m + "\n\n"
+                                                + "可先去系统设置确认人脸已录入，再回来重试。")
+                                        .setPositiveButton("去系统设置",
+                                                (x, y) -> Biometric.openEnroll(a))
+                                        .setNegativeButton("关闭", null)
+                                        .show();
                             }
                         }))
                 .setNegativeButton("取消", null)
