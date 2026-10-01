@@ -55,12 +55,17 @@ jobs:
           echo "name=$V" >> $GITHUB_OUTPUT
           echo "版本号：$V"
 
+      # 只在 Release 还不存在时才建，并填 RELEASE_NOTES.md。
+      # 若已存在（例如用 publish_releases.sh 批量补传历史 APK 建的），
+      # 就不要覆盖 —— 那些 Release 带着 🔴/🟠 版本警告，一覆盖就没了。
       - name: 发布到 Release
         uses: softprops/action-gh-release@v2
         with:
           name: 密盒 v${{ steps.ver.outputs.name }}
           body_path: RELEASE_NOTES.md
           files: VaultKey-v${{ steps.ver.outputs.name }}.apk
+          draft: false
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
