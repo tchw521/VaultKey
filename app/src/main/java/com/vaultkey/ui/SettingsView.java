@@ -30,6 +30,7 @@ import com.vaultkey.service.FloatService;
 import com.vaultkey.util.Avatar;
 import com.vaultkey.util.CircleDrawable;
 import com.vaultkey.util.Splash;
+import com.vaultkey.util.Updater;
 import com.vaultkey.util.Cutout;
 import com.vaultkey.util.Skin;
 import com.vaultkey.util.IconFill;
@@ -219,6 +220,8 @@ public final class SettingsView {
 
         main.addView(a.section("关于"));
         main.addView(a.settingRow("shield", "关于应用", "v" + appVer() + " · 开发者 tchw521", v -> aboutDialog()));
+        main.addView(a.settingRow("download", "下载最新版", "GitHub Releases / 蓝奏云网盘", v -> checkUpdate()));
+        main.addView(a.settingRow("cloud", "蓝奏云下载", "国内直连更快（密码 1111）", v -> lanzouDialog()));
         main.addView(a.settingRow("gift", "赞助作者", "如果密盒帮到了你", v -> sponsorDialog()));
         main.addView(a.settingRow("trash", "清空回收站", "彻底删除已删除的账号与卡片", v -> {
             Db.get(a).emptyTrash();
@@ -1018,7 +1021,95 @@ public final class SettingsView {
                 .setTitle("关于密盒")
                 .setMessage(msg)
                 .setPositiveButton("好", null)
+                .setNegativeButton("检查更新", (d, w) -> checkUpdate())
                 .setNeutralButton("赞助", (d, w) -> sponsorDialog())
+                .show();
+    }
+
+    /* ---------------- 检查更新 ---------------- */
+
+    private void checkUpdate() {
+        android.app.ProgressDialog pd = new android.app.ProgressDialog(a);
+        pd.setMessage("正在检查…");
+        pd.setCancelable(true);
+        pd.show();
+
+        final String cur = appVer();
+        new Thread(() -> {
+            Updater.Info info = Updater.fetch();
+            a.runOnUiThread(() -> {
+                try { pd.dismiss(); } catch (Exception ignored) { }
+                if (!info.ok) {
+                    new android.app.AlertDialog.Builder(a)
+                            .setTitle("检查失败")
+                            .setMessage(info.error == null ? "未知原因" : info.error)
+                            .setPositiveButton("好", null)
+                            .setNeutralButton("去网页看", (d, w) ->
+                                    Updater.open(a, "https://github.com/" + Updater.REPO + "/releases"))
+                            .show();
+                    return;
+                }
+                boolean newer = Updater.compare(info.version, cur) > 0;
+                showUpdateResult(cur, info, newer);
+            });
+        }).start();
+    }
+
+    private void showUpdateResult(String cur, Updater.Info info, boolean newer) {
+        if (!newer) {
+            new android.app.AlertDialog.Builder(a)
+                    .setTitle("已是最新版")
+                    .setMessage("当前 v" + cur + "\n云端 v" + info.version + "\n\n无需更新")
+                    .setPositiveButton("好", null)
+                    .setNeutralButton("下载页", (d, w) -> openDownload(info))
+                    .show();
+            return;
+        }
+        StringBuilder m = new StringBuilder();
+        m.append("当前 v").append(cur).append("\n")
+         .append("最新 v").append(info.version).append("\n");
+        if (info.apkSize > 0)
+            m.append("大小 ").append(info.apkSize / 1024).append(" KB").append("\n");
+        if (info.notes != null && !info.notes.trim().isEmpty()) {
+            String n = info.notes.trim();
+            /* Release 说明可能很长，截断避免弹窗滚不动 */
+            if (n.length() > 400) n = n.substring(0, 400) + "…";
+            m.append("\n").append(n);
+        }
+        new android.app.AlertDialog.Builder(a)
+                .setTitle("发现新版本")
+                .setMessage(m.toString())
+                .setPositiveButton("下载", (d, w) -> openDownload(info))
+                .setNegativeButton("以后", null)
+                .setNeutralButton("蓝奏云", (d, w) -> lanzouDialog())
+                .show();
+    }
+
+    /** 打开下载页。优先 APK 直链，没有就打开 Release 页面 */
+    private void openDownload(Updater.Info info) {
+        String u = (info != null && info.apkUrl != null && !info.apkUrl.isEmpty())
+                ? info.apkUrl : "https://github.com/" + Updater.REPO + "/releases";
+        Updater.open(a, u);
+    }
+
+    /** 蓝奏云备用下载：国内网络更稳，且能避免 GitHub 直连不畅 */
+    private void lanzouDialog() {
+        String msg = "蓝奏云备用下载地址：\n\n"
+                + Updater.LANZOU_URL + "\n\n"
+                + "提取密码：" + Updater.LANZOU_PWD + "\n\n"
+                + "点「打开」会用浏览器进入，输入密码后即可下载。";
+        new android.app.AlertDialog.Builder(a)
+                .setTitle("蓝奏云下载")
+                .setMessage(msg)
+                .setPositiveButton("打开", (d, w) -> Updater.open(a, Updater.LANZOU_URL))
+                .setNeutralButton("复制密码", (d, w) -> {
+                    android.content.ClipboardManager cm = (android.content.ClipboardManager)
+                            a.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                    if (cm != null)
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("pwd", Updater.LANZOU_PWD));
+                    a.toast("密码已复制");
+                })
+                .setNegativeButton("关闭", null)
                 .show();
     }
 
