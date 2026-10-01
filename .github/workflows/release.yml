@@ -60,12 +60,12 @@ jobs:
         with:
           name: 密盒 v${{ steps.ver.outputs.name }}
           body_path: RELEASE_NOTES.md
-          files: 密盒-VaultKey-v${{ steps.ver.outputs.name }}.apk
+          files: VaultKey-v${{ steps.ver.outputs.name }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 校验产物
         run: |
-          APK=$(ls 密盒-VaultKey-v*.apk | head -1)
+          APK=$(ls VaultKey-v*.apk | head -1)
           aapt dump badging "$APK" | head -3
           ls -lh "$APK"

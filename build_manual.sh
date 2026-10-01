@@ -34,7 +34,9 @@ VERSION_CODE=$(grep '^VERSION_CODE=' "$VER_FILE" | cut -d= -f2 | tr -d ' \r')
 if [ -z "$VERSION_NAME" ] || [ -z "$VERSION_CODE" ]; then
   echo "!! 读不到版本号，检查 $VER_FILE"; exit 1
 fi
-APK="$ROOT/密盒-VaultKey-v${VERSION_NAME}.apk"
+# 产物名保持纯 ASCII：CI 环境 locale 不一定支持 UTF-8，
+# 中文文件名在上传 Release 时会被截断（实测「密盒-」前缀丢失）。
+APK="$ROOT/VaultKey-v${VERSION_NAME}.apk"
 echo "== 构建 v${VERSION_NAME} (code ${VERSION_CODE}) =="
 KS=${KS:-$ROOT/vaultkey.jks}
 
