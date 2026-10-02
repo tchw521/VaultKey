@@ -18,6 +18,7 @@ import com.vaultkey.util.Ico;
 import com.vaultkey.util.Icons;
 import com.vaultkey.util.Lookup;
 import com.vaultkey.util.Ui;
+import com.vaultkey.util.SimpleAdapter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,7 +37,7 @@ public final class SitePicker {
     private final ExecutorService pool = Executors.newFixedThreadPool(3);
     private final List<Lookup.Hit> hits = new ArrayList<>();
     private final Map<String, Bitmap> icons = new HashMap<>();
-    private Ad ad;
+    private SimpleAdapter<Lookup.Hit> ad;
     private LinearLayout root;
     private TextView status;
 
@@ -105,7 +106,7 @@ public final class SitePicker {
         ListView lv = new ListView(a);
         lv.setDivider(null);
         lv.setDividerHeight(Ui.dp(a, 6));
-        ad = new Ad(d);
+        ad = makeAd(d);
         lv.setAdapter(ad);
         root.addView(lv, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -130,7 +131,7 @@ public final class SitePicker {
         if (s.isEmpty()) { a.toast("请输入名称"); return; }
         hits.clear();
         icons.clear();
-        ad.notifyDataSetChanged();
+        ad.setData(hits);
         status.setText("正在搜索「" + s + "」…");
         pool.submit(() -> {
             List<Lookup.Hit> r = Lookup.search(s);
@@ -138,7 +139,7 @@ public final class SitePicker {
                 if (!d.isShowing()) return;
                 hits.clear();
                 hits.addAll(r);
-                ad.notifyDataSetChanged();
+                ad.setData(hits);
                 if (r.isEmpty()) {
                     status.setText("没有搜到结果，检查网络后重试，或手动填写网址");
                 } else {
@@ -157,21 +158,15 @@ public final class SitePicker {
             Bitmap b = Lookup.icon(host);
             if (b == null) return null;
             Icons.cacheHost(a, host, b);
-            a.runOnUiThread(() -> { icons.put(host, b); ad.notifyDataSetChanged(); });
+            a.runOnUiThread(() -> { icons.put(host, b); ad.setData(hits); });
             return null;
         });
     }
 
-    private final class Ad extends android.widget.BaseAdapter {
-        private final Dialog dlg;
-        Ad(Dialog d) { dlg = d; }
-
-        @Override public int getCount() { return hits.size(); }
-        @Override public Object getItem(int p) { return hits.get(p); }
-        @Override public long getItemId(int p) { return p; }
-
-        @Override public View getView(int p, View cv, ViewGroup parent) {
-            final Lookup.Hit h = hits.get(p);
+    /** 只写 view()，其余样板由 SimpleAdapter 提供 */
+    private SimpleAdapter<Lookup.Hit> makeAd(Dialog dlg) {
+        return new SimpleAdapter<Lookup.Hit>() {
+        @Override public View view(int p, final Lookup.Hit h, View cv, ViewGroup parent) {
             LinearLayout l = new LinearLayout(a);
             l.setOrientation(LinearLayout.HORIZONTAL);
             l.setGravity(Gravity.CENTER_VERTICAL);
@@ -231,5 +226,6 @@ public final class SitePicker {
             });
             return l;
         }
+        };
     }
 }

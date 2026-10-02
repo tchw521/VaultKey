@@ -9,6 +9,11 @@ import com.vaultkey.crypto.Crypto;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /** 图片附件：用主密钥 AES 加密后存本机文件，只把文件名存在数据库里 */
 public final class Attach {
@@ -59,6 +64,86 @@ public final class Attach {
     public static void remove(Context c, String name) {
         if (name == null || name.isEmpty()) return;
         try { new File(dir(c), name).delete(); } catch (Exception ignored) { }
+    }
+
+    /* ---------------- 附件管理页用 ---------------- */
+
+    /** 一个附件文件 */
+    public static final class Item {
+        public final String name;
+        public final long size;      // 加密后占用的磁盘大小
+        public final long when;      // 文件名里带的时间戳
+
+        Item(String name, long size, long when) {
+            this.name = name; this.size = size; this.when = when;
+        }
+    }
+
+    /** 磁盘上的全部附件，按时间倒序 */
+    public static List<Item> listAll(Context c) {
+        List<Item> out = new ArrayList<>();
+        File[] fs = dir(c).listFiles();
+        if (fs == null) return out;
+        for (File f : fs) {
+            if (!f.isFile()) continue;
+            long when = 0;
+            try {
+                /* 文件名形如 1735000000000_1a2b.vka */
+                String n = f.getName();
+                int u = n.indexOf('_');
+                if (u > 0) when = Long.parseLong(n.substring(0, u));
+            } catch (Exception ignored) { }
+            out.add(new Item(f.getName(), f.length(), when));
+        }
+        Collections.sort(out, (a, b) -> Long.compare(b.when, a.when));
+        return out;
+    }
+
+    /**
+     * 找出孤儿附件：文件还在，但已经没有任何卡片引用它。
+     *
+     * 常见成因：删卡片时只删了数据库记录、编辑时中途退出、导入数据覆盖了 imgs 字段。
+     * 这些文件加密后少则几十 KB，多则上百 KB，攒多了挺占地方。
+     */
+    public static List<Item> orphans(Context c) {
+        Set<String> used = new HashSet<>();
+        for (Db.Card cd : Db.get(c).cardsRaw()) {
+            for (String s : Db.imgs(cd.imgs)) {
+                if (s != null && !s.isEmpty()) used.add(s);
+            }
+        }
+        List<Item> out = new ArrayList<>();
+        for (Item it : listAll(c)) if (!used.contains(it.name)) out.add(it);
+        return out;
+    }
+
+    /** 附件总共占了多少磁盘 */
+    public static long totalSize(Context c) {
+        long n = 0;
+        for (Item it : listAll(c)) n += it.size;
+        return n;
+    }
+
+    /** 哪些卡片引用了这个附件（用于删除前提示） */
+    public static String owners(Context c, String name) {
+        if (name == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (Db.Card cd : Db.get(c).cardsRaw()) {
+            for (String s : Db.imgs(cd.imgs)) {
+                if (name.equals(s)) {
+                    if (sb.length() > 0) sb.append("、");
+                    sb.append(cd.title == null || cd.title.isEmpty() ? "未命名卡片" : cd.title);
+                    break;
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    public static String sizeText(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        return String.format("%.1f MB", bytes / (1024.0 * 1024));
     }
 
     private static byte[] compress(Context c, Uri uri) {

@@ -644,6 +644,7 @@ public final class MainActivity extends BaseActivity implements ToolsView.Host {
             box.refresh();
             link.refresh();
             Sync.maybeAuto(this);
+        com.vaultkey.data.AutoBackup.maybeRun(this);
         }
         /* 小部件 / 自动填充 / 长按快捷方式：解锁回来后直达目标 */
         /* 搜索框在 VaultPage 内部，这里只负责把页面切过去并聚焦 */
@@ -832,6 +833,11 @@ public final class MainActivity extends BaseActivity implements ToolsView.Host {
         if (res == RESULT_OK && settings != null && settings.onPickResult(req, data)) return;
         /* 授权本地备份文件夹：坚果云同步页在用（导入导出入口都在那儿） */
         if (settings != null && settings.syncPage().onPickDirResult(req, data)) return;
+        /* 设置中心「数据备份」页授权的备份文件夹 */
+        if (res == RESULT_OK && req == 9001 && settings != null) {
+            settings.onBackupDirResult(data);
+            return;
+        }
         if (res != RESULT_OK || data == null || data.getData() == null) return;
         if (req == REQ_EXPORT) {
             try {

@@ -161,6 +161,17 @@ public final class ToolsView {
         au.setOnClickListener(v -> renderAudit());
         box.addView(au);
 
+        /* 完整报告（含泄露库比对）单独开一页，这里只放入口 */
+        android.widget.Button full = a.button("查看完整报告", new int[]{a.accent(), a.accent2()});
+        full.setPadding(0, Ui.dp(a, 11), 0, Ui.dp(a, 11));
+        LinearLayout.LayoutParams fl = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        fl.topMargin = Ui.dp(a, 8);
+        full.setLayoutParams(fl);
+        full.setOnClickListener(v ->
+                a.startActivity(new android.content.Intent(a, HealthActivity.class)));
+        box.addView(full);
+
     }
 
     private View backRow(String t) {

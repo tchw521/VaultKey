@@ -30,6 +30,7 @@ import com.vaultkey.util.PasswordGen;
 import com.vaultkey.util.Pinyin;
 import com.vaultkey.util.Totp;
 import com.vaultkey.util.Ui;
+import com.vaultkey.util.SimpleAdapter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -99,7 +100,7 @@ public final class VaultList {
     public void selectAll(boolean all) {
         selected.clear();
         if (all) {
-            for (Row r : ad.rows) if (!r.isHeader() && r.e != null) selected.add(r.e.id);
+            for (Row r : ad.data()) if (!r.isHeader() && r.e != null) selected.add(r.e.id);
         }
         ad.notifyDataSetChanged();
         if (onSelChanged != null) onSelChanged.run();
@@ -157,7 +158,7 @@ public final class VaultList {
          */
         List<Db.Entry> data = Db.get(a).list(
                 catUuid.isEmpty() ? null : catUuid, favOnly, trash, query, kind);
-        ad.setData(data);
+        ad.setEntries(data);
         if (emptyView == null) {
             emptyView = new TextView(a);
             emptyView.setTextColor(Ui.attr(a, R.attr.textColor2));
@@ -533,11 +534,24 @@ public final class VaultList {
         boolean isHeader() { return header != null; }
     }
 
-    private final class Ad extends BaseAdapter {
-        private final List<Row> rows = new ArrayList<>();
+    /**
+     * 只写差异部分：排序规则、行类型、view()。
+     * 其余 getCount/getItem/getItemId 等样板由 SimpleAdapter 提供。
+     */
+    private final class Ad extends SimpleAdapter<Row> {
+        /** 行分两种：0=字母分组头，1=账号 */
+        @Override protected int typeCount() { return 2; }
+        @Override protected int typeOf(Row r, int p) { return r.isHeader() ? 0 : 1; }
+        @Override protected boolean enabled(Row r, int p) { return !r.isHeader(); }
 
-        void setData(List<Db.Entry> data) {
-            rows.clear();
+        @Override public View view(int p, Row r, View cv, ViewGroup parent) {
+            if (r.isHeader()) return headerView(r.header);
+            return entryView(r.e);
+        }
+
+        /** 排序 + 插入分组头，再交给基类刷新 */
+        void setEntries(List<Db.Entry> data) {
+            java.util.List<Row> rows = new ArrayList<>();
             letterPos.clear();
             List<Db.Entry> sorted = new ArrayList<>(data);
             if (grouped) {
@@ -560,20 +574,7 @@ public final class VaultList {
                 sorted.sort((x, y) -> Long.compare(y.mtime, x.mtime));
                 for (Db.Entry e : sorted) rows.add(new Row(e));
             }
-            notifyDataSetChanged();
-        }
-
-        @Override public int getCount() { return rows.size(); }
-        @Override public Object getItem(int p) { return rows.get(p); }
-        @Override public long getItemId(int p) { return p; }
-        @Override public int getItemViewType(int p) { return rows.get(p).isHeader() ? 0 : 1; }
-        @Override public int getViewTypeCount() { return 2; }
-        @Override public boolean isEnabled(int p) { return !rows.get(p).isHeader(); }
-
-        @Override public View getView(int p, View cv, ViewGroup parent) {
-            Row r = rows.get(p);
-            if (r.isHeader()) return headerView(r.header);
-            return entryView(r.e);
+            setData(rows);
         }
 
         private View headerView(String letter) {

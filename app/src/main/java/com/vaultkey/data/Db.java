@@ -906,6 +906,64 @@ public final class Db extends SQLiteOpenHelper {
         return n;
     }
 
+    /**
+     * 全库重命名标签。
+     * 用的是「逐条取出 → 替换 → 存回」，因为标签是打包在一个字符串字段里的，
+     * 没法用一条 SQL 改。条目多的库会慢一点，但改名不常做，可接受。
+     *
+     * @return 受影响的条目数
+     */
+    public int renameTag(String from, String to) {
+        if (from == null || from.isEmpty() || to == null || to.trim().isEmpty()) return 0;
+        String dst = to.trim();
+        if (from.equals(dst)) return 0;
+        dropCache();
+        int n = 0;
+        for (Entry e : raw()) {
+            java.util.List<String> ts = tagList(e.tags);
+            boolean hit = false;
+            java.util.List<String> out = new java.util.ArrayList<>();
+            for (String t : ts) {
+                if (from.equals(t)) { out.add(dst); hit = true; }
+                else out.add(t);
+            }
+            if (hit) {
+                e.tags = packTags(out);
+                save(e);
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** 全库删除某个标签（只摘标签，不动条目本身） */
+    public int removeTag(String tag) {
+        if (tag == null || tag.isEmpty()) return 0;
+        dropCache();
+        int n = 0;
+        for (Entry e : raw()) {
+            java.util.List<String> ts = tagList(e.tags);
+            java.util.List<String> out = new java.util.ArrayList<>();
+            for (String t : ts) if (!tag.equals(t)) out.add(t);
+            if (out.size() != ts.size()) {
+                e.tags = packTags(out);
+                save(e);
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** 某个标签用了多少次 */
+    public int tagCount(String tag) {
+        if (tag == null) return 0;
+        int n = 0;
+        for (Entry e : raw()) {
+            for (String t : tagList(e.tags)) if (tag.equals(t)) { n++; break; }
+        }
+        return n;
+    }
+
     /** 批量设置收藏 */
     public int setFav(java.util.Collection<Long> ids, boolean fav) {
         dropCache();

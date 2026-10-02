@@ -219,7 +219,7 @@ public final class EntryEditActivity extends BaseActivity {
         box.addView(labeled("标签", tagRow));
         renderTags();
 
-        totp = field("两步验证密钥（可选）", e.totp);
+        totp = field("两步验证密钥 / otpauth 链接（可选）", e.totp);
         if (e.kind != 1) box.addView(labeled("动态口令", totp));
 
         notes = field("备注（可选）", e.notes);
@@ -546,7 +546,23 @@ public final class EntryEditActivity extends BaseActivity {
         e.pass = pass.getText().toString();
         e.url = url.getText().toString().trim();
         e.notes = notes.getText().toString();
-        e.totp = Totp.normalize(totp.getText().toString().trim());
+        /* 粘进来的是 otpauth:// 链接时自动取密钥，用户不用自己抠 secret= 后面的部分 */
+        String rawTotp = totp.getText().toString().trim();
+        if (Totp.isUri(rawTotp)) {
+            String sec = Totp.secretFromUri(rawTotp);
+            if (sec == null || sec.isEmpty()) {
+                toast("这个 otpauth 链接里没有 secret 参数");
+                return;
+            }
+            e.totp = sec;
+            /* 标题还空着就顺手用服务商名填上 */
+            if (e.title.isEmpty()) {
+                String iss = Totp.issuerFromUri(rawTotp);
+                if (iss != null && !iss.isEmpty()) e.title = iss;
+            }
+        } else {
+            e.totp = Totp.normalize(rawTotp);
+        }
         e.catUuid = catUuid;
         e.pkg = pkg;
         e.tags = Db.packTags(tags);

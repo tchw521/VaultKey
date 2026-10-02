@@ -24,13 +24,14 @@ import com.vaultkey.data.Session;
 import com.vaultkey.util.Ico;
 import com.vaultkey.util.Liquid;
 import com.vaultkey.util.Ui;
+import com.vaultkey.util.SimpleAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
 /** 卡包列表：身份证 / 银行卡 / 社保卡 / 驾驶证 / 护照 / 会员卡 / 自定义 */
 public final class CardList {
     private final BaseActivity a;
-    private final Ad ad = new Ad();
+    private final SimpleAdapter<Db.Card> ad = makeAd();
     private ListView list;
     private TextView emptyView;
     private String kind = "";
@@ -89,21 +90,13 @@ public final class CardList {
 
     /* ---------------- 适配器 ---------------- */
 
-    private final class Ad extends BaseAdapter {
-        private final List<Db.Card> rows = new ArrayList<>();
+    /** 只写 view()，其余样板由 SimpleAdapter 提供 */
+    private SimpleAdapter<Db.Card> makeAd() {
+        return new SimpleAdapter<Db.Card>() {
+        /** 用数据库主键当 id，而不是下标 */
+        @Override protected long idOf(Db.Card c, int p) { return c.id; }
 
-        void setData(List<Db.Card> d) {
-            rows.clear();
-            rows.addAll(d);
-            notifyDataSetChanged();
-        }
-
-        @Override public int getCount() { return rows.size(); }
-        @Override public Object getItem(int p) { return rows.get(p); }
-        @Override public long getItemId(int p) { return rows.get(p).id; }
-
-        @Override public View getView(int p, View cv, ViewGroup parent) {
-            final Db.Card c = rows.get(p);
+        @Override public View view(int p, final Db.Card c, View cv, ViewGroup parent) {
             LinearLayout card = new LinearLayout(a);
             card.setOrientation(LinearLayout.VERTICAL);
             int pd = Ui.dp(a, 14);
@@ -304,5 +297,6 @@ public final class CardList {
                 addView(iv);
             }
         }
+        };
     }
 }

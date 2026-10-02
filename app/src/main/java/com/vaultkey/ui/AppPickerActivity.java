@@ -17,6 +17,7 @@ import com.vaultkey.R;
 import com.vaultkey.util.Ico;
 import com.vaultkey.util.Icons;
 import com.vaultkey.util.Ui;
+import com.vaultkey.util.SimpleAdapter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -27,7 +28,7 @@ public final class AppPickerActivity extends BaseActivity {
     private final List<Icons.AppInfo> all = new ArrayList<>();
     private final List<Icons.AppInfo> shown = new ArrayList<>();
     private final ExecutorService pool = Executors.newSingleThreadExecutor();
-    private Ad ad;
+    private SimpleAdapter<Icons.AppInfo> ad;
     private TextView hint;
 
     @Override protected void onCreate(Bundle b) {
@@ -54,7 +55,7 @@ public final class AppPickerActivity extends BaseActivity {
         lv.setDivider(null);
         lv.setDividerHeight(Ui.dp(this, 6));
         lv.setVerticalScrollBarEnabled(false);
-        ad = new Ad();
+        ad = makeAd();
         lv.setAdapter(ad);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         lp.topMargin = Ui.dp(this, 6);
@@ -81,7 +82,7 @@ public final class AppPickerActivity extends BaseActivity {
             List<Icons.AppInfo> l = Icons.installed(this);
             runOnUiThread(() -> {
                 all.clear(); all.addAll(l); shown.clear(); shown.addAll(l);
-                ad.notifyDataSetChanged();
+                ad.setData(shown);
                 if (l.isEmpty()) {
                     hint.setText("没读到应用列表。安卓 11 起系统限制了应用可见性，"
                             + "若本页为空可点下方「手动填写包名」，或用「网址」替代关联。");
@@ -128,16 +129,13 @@ public final class AppPickerActivity extends BaseActivity {
                     || (a.name != null && a.name.toLowerCase().contains(s))
                     || a.pkg.toLowerCase().contains(s)) shown.add(a);
         }
-        ad.notifyDataSetChanged();
+        ad.setData(shown);
     }
 
-    final class Ad extends android.widget.BaseAdapter {
-        @Override public int getCount() { return shown.size(); }
-        @Override public Object getItem(int p) { return shown.get(p); }
-        @Override public long getItemId(int p) { return p; }
-
-        @Override public View getView(int p, View cv, ViewGroup parent) {
-            Icons.AppInfo a = shown.get(p);
+    /** 列表适配器：只写有差异的 view()，其余样板由 SimpleAdapter 提供 */
+    private SimpleAdapter<Icons.AppInfo> makeAd() {
+        return new SimpleAdapter<Icons.AppInfo>() {
+        @Override public View view(int p, Icons.AppInfo a, View cv, ViewGroup parent) {
             LinearLayout l = new LinearLayout(AppPickerActivity.this);
             l.setOrientation(LinearLayout.HORIZONTAL);
             l.setGravity(Gravity.CENTER_VERTICAL);
@@ -194,6 +192,7 @@ public final class AppPickerActivity extends BaseActivity {
             });
             return l;
         }
+        };
     }
 
     static abstract class SimpleTextWatcher implements TextWatcher {

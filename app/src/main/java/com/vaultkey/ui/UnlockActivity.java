@@ -334,5 +334,6 @@ public final class UnlockActivity extends BaseActivity {
     @Override protected void onPause() {
         super.onPause();
         com.vaultkey.sync.Sync.maybeAuto(this);
+        com.vaultkey.data.AutoBackup.maybeRun(this);
     }
 }

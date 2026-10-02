@@ -17,13 +17,14 @@ import com.vaultkey.util.Ico;
 import com.vaultkey.util.IconFill;
 import com.vaultkey.util.Icons;
 import com.vaultkey.util.Ui;
+import com.vaultkey.util.SimpleAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
 /** 自动获取图标：扫描本机所有账号，本地优先，本地没有才走云端搜索 */
 public final class IconFillActivity extends BaseActivity {
     private ListView list;
-    private Ad ad;
+    private SimpleAdapter<Row> ad;
     private TextView progress, summary;
     private TextView startBtn, stopBtn;
     private android.widget.CheckBox fillUrlBox;
@@ -121,7 +122,7 @@ public final class IconFillActivity extends BaseActivity {
         list.setDivider(null);
         list.setDividerHeight(Ui.dp(this, 6));
         list.setVerticalScrollBarEnabled(false);
-        ad = new Ad();
+        ad = makeAd();
         list.setAdapter(ad);
         LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         ll.topMargin = Ui.dp(this, 4);
@@ -144,7 +145,7 @@ public final class IconFillActivity extends BaseActivity {
             r.detail = "等待中";
             rows.add(r);
         }
-        ad.notifyDataSetChanged();
+        ad.setData(rows);
 
         running = true;
         startBtn.setVisibility(View.GONE);
@@ -167,7 +168,7 @@ public final class IconFillActivity extends BaseActivity {
                         break;
                     }
                 }
-                ad.notifyDataSetChanged();
+                ad.setData(rows);
                 progress.setText("正在处理 " + done + " / " + total
                         + (r.ok ? " · " + IconFill.fromName(r.from) : ""));
             }
@@ -199,13 +200,10 @@ public final class IconFillActivity extends BaseActivity {
         super.onBackPressed();
     }
 
-    private final class Ad extends android.widget.BaseAdapter {
-        @Override public int getCount() { return rows.size(); }
-        @Override public Object getItem(int p) { return rows.get(p); }
-        @Override public long getItemId(int p) { return p; }
-
-        @Override public View getView(int p, View cv, ViewGroup parent) {
-            Row r = rows.get(p);
+    /** 只写 view()，其余样板由 SimpleAdapter 提供 */
+    private SimpleAdapter<Row> makeAd() {
+        return new SimpleAdapter<Row>() {
+        @Override public View view(int p, Row r, View cv, ViewGroup parent) {
             LinearLayout l = new LinearLayout(IconFillActivity.this);
             l.setOrientation(LinearLayout.HORIZONTAL);
             l.setGravity(Gravity.CENTER_VERTICAL);
@@ -256,5 +254,6 @@ public final class IconFillActivity extends BaseActivity {
             l.addView(tx);
             return l;
         }
+        };
     }
 }

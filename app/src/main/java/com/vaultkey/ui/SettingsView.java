@@ -23,6 +23,9 @@ import com.vaultkey.crypto.Biometric;
 import com.vaultkey.crypto.Crypto;
 import com.vaultkey.crypto.KeystoreHelper;
 import com.vaultkey.data.Db;
+import com.vaultkey.data.Attach;
+import com.vaultkey.data.BackupDir;
+import com.vaultkey.data.AutoBackup;
 import com.vaultkey.data.Prefs;
 import com.vaultkey.data.Session;
 import com.vaultkey.sync.Sync;
@@ -36,6 +39,7 @@ import com.vaultkey.util.Cutout;
 import com.vaultkey.util.Skin;
 import com.vaultkey.util.IconFill;
 import com.vaultkey.util.Ui;
+import com.vaultkey.util.Dlg;
 import java.util.List;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -115,6 +119,7 @@ public final class SettingsView {
 
         main.addView(statsCard());
         main.addView(a.section("通用"));
+        main.addView(a.settingRow("sync", "数据备份", backupSummary(), v -> backupPage()));
         main.addView(a.settingRow("sync", "坚果云同步", Sync.configured() ? Sync.lastSyncText() : "未配置账号",
                 v -> {
                     if (syncPage == null) syncPage = new SyncView(a, this::onBack, host);
@@ -129,8 +134,10 @@ public final class SettingsView {
         main.addView(a.settingRow("lock", "自动填充",
                 Prefs.getB("af_strict", true) ? "已开启 · 严格识别" : "已开启 · 宽松识别",
                 v -> autofillPage()));
-        main.addView(a.settingRow("app", "自定义分类", "新建 / 改名 / 换图标 / 换色 / 删除", v -> cats(0, null)));
+        main.addView(a.settingRow("app", "分类与标签", catTagSummary(), v -> catTagPage()));
         main.addView(a.settingRow("image", "账号图标", iconSummary(), v -> iconPage()));
+        main.addView(a.settingRow("image", "附件管理", attachSummary(),
+                v -> a.startActivity(new Intent(a, AttachActivity.class))));
         main.addView(a.settingRow("app", "悬浮窗",
                 FloatService.enabled()
                         ? (FloatService.canDraw(a) ? "已开启，在其他应用上方可直接取账号" : "已开启，但还缺悬浮窗权限")
@@ -151,11 +158,10 @@ public final class SettingsView {
                 v -> a.startActivity(new Intent(a, RecoverActivity.class))));
         main.addView(a.settingRow("sync", "换机直传",
                 "两台手机连同一 WiFi，配对码确认后整个密码库直接过去",
-                v -> new android.app.AlertDialog.Builder(a).setTitle("换机直传")
-                        .setItems(new String[]{"我是旧手机，发送出去", "我是新手机，接收过来"},
-                                (d, w) -> a.startActivity(new Intent(a, TransferActivity.class)
-                                        .putExtra(TransferActivity.EXTRA_MODE, w == 0 ? "send" : "recv")))
-                        .show()));
+                v -> Dlg.pick(a, "换机直传",
+                        new String[]{"我是旧手机，发送出去", "我是新手机，接收过来"},
+                        w -> a.startActivity(new Intent(a, TransferActivity.class)
+                                .putExtra(TransferActivity.EXTRA_MODE, w == 0 ? "send" : "recv")))));
         /* 原先这里有「回收站 / 导入数据 / 导出数据」三项，现已移除：
            - 回收站：左侧导航栏底部本来就有，且回收站内已能切换账号与卡片，重复入口
            - 导入 / 导出：与「坚果云同步」页里的同类项重复，两个入口容易让人分不清
@@ -180,10 +186,10 @@ public final class SettingsView {
         main.addView(a.settingRow("copy", "剪贴板自动清空", Prefs.getI("clip_sec", 45) + " 秒后清空", v -> {
             String[] o = {"30 秒", "45 秒", "60 秒", "120 秒"};
             final int[] vv = {30, 45, 60, 120};
-            new android.app.AlertDialog.Builder(a).setTitle("剪贴板清空").setItems(o, (d, w) -> {
+            Dlg.pick(a, "剪贴板清空", o, w -> {
                 Prefs.putI("clip_sec", vv[w]);
                 render();
-            }).show();
+            });
         }));
         main.addView(toggleRow("camera", "禁止截屏",
                 Prefs.getB("block_capture", true) ? "已开启，界面无法被截屏或录屏" : "已关闭，允许截屏",
@@ -571,17 +577,16 @@ public final class SettingsView {
         String[] o = Avatar.has(a)
                 ? new String[]{"从相册选一张", "移除头像"}
                 : new String[]{"从相册选一张"};
-        new android.app.AlertDialog.Builder(a)
-                .setTitle(Prefs.get("dav_user", "").isEmpty() ? "头像" : Prefs.get("dav_user", ""))
-                .setItems(o, (d, w) -> {
+        Dlg.pick(a,
+                Prefs.get("dav_user", "").isEmpty() ? "头像" : Prefs.get("dav_user", ""),
+                o, w -> {
                     if (w == 0) pickAvatar();
                     else {
                         Avatar.clear(a);
                         a.toast("已移除头像");
                         render();
                     }
-                })
-                .setNegativeButton("取消", null).show();
+                });
     }
 
     /* ---------------- 坚果云卡片（参考同类 App 布局） ---------------- */
@@ -718,10 +723,8 @@ public final class SettingsView {
         down.setTextSize(13);
         down.setOnClickListener(v -> {
             if (!Sync.configured()) { a.toast("请先配置坚果云账号"); openSync(); return; }
-            new android.app.AlertDialog.Builder(a).setTitle("以云端覆盖本机？")
-                    .setMessage("本机数据将被云端数据替换")
-                    .setPositiveButton("确定", (d, w) -> syncNow(true))
-                    .setNegativeButton("取消", null).show();
+            Dlg.confirm(a, "以云端覆盖本机？", "本机数据将被云端数据替换", "确定",
+                    () -> syncNow(true));
         });
         btns.addView(down);
         c.addView(btns);
@@ -1303,12 +1306,8 @@ public final class SettingsView {
         box.addView(a.section("排查"));
         box.addView(a.settingRow("info", "生物识别自检",
                 "看设备到底支持哪种、开了哪个", v ->
-                        new android.app.AlertDialog.Builder(a)
-                                .setTitle("生物识别自检")
-                                .setMessage(Biometric.diag(a))
-                                .setPositiveButton("好", null)
-                                .setNeutralButton("系统设置", (x, y) -> Biometric.openEnroll(a))
-                                .show()));
+                        Dlg.infoWithNeutral(a, "生物识别自检", Biometric.diag(a),
+                                "系统设置", () -> Biometric.openEnroll(a))));
         box.addView(a.settingRow("settings", "去系统设置录入",
                 "打开系统的「指纹、面部与密码」", v -> Biometric.openEnroll(a)));
 
@@ -1443,6 +1442,135 @@ public final class SettingsView {
         }
         l.setBackground(Ui.glass(a, 16, R.attr.cardColor, R.attr.strokeColor));
         return l;
+    }
+
+
+    /* ---------------- 数据备份（云端 + 本地自动备份） ---------------- */
+
+    private String backupSummary() {
+        boolean cloud = Sync.configured();
+        boolean local = AutoBackup.enabled(a);
+        if (cloud && local) return "云端 + 本地自动 · " + AutoBackup.lastText();
+        if (cloud) return "云端已配置 · 本地自动未开";
+        if (local) return "本地自动 · " + AutoBackup.lastText();
+        return "均未开启";
+    }
+
+    private void backupPage() {
+        LinearLayout p = subPage("数据备份");
+        LinearLayout box = pageBox(p);
+
+        box.addView(a.section("云端同步"));
+        box.addView(a.settingRow("sync", "坚果云同步",
+                Sync.configured() ? Sync.lastSyncText() : "未配置账号",
+                v -> {
+                    if (syncPage == null) syncPage = new SyncView(a, this::onBack, host);
+                    syncPage.refresh();
+                    openSub(syncPage.view());
+                }));
+
+        box.addView(a.section("本地自动备份"));
+        if (!BackupDir.has(a)) {
+            box.addView(a.settingRow("folder", "授权备份文件夹",
+                    "先选一个文件夹，之后自动备份会写进去", v -> pickBackupDir()));
+        } else {
+            box.addView(a.settingRow("folder", "备份文件夹",
+                    BackupDir.name(a) + (BackupDir.alive(a) ? "" : "（已失效）"),
+                    v -> pickBackupDir()));
+            box.addView(toggleRow("sync", "每天自动备份",
+                    AutoBackup.enabled(a) ? "开启，进入应用时自动备份一次" : "已关闭",
+                    AutoBackup.enabled(a), on -> {
+                AutoBackup.setEnabled(a, on);
+                render();
+            }));
+            box.addView(a.settingRow("trash", "保留份数",
+                    "当前保留最近 " + AutoBackup.keep(a) + " 份", v -> {
+                String[] o = {"3 份", "5 份", "7 份", "10 份", "20 份"};
+                final int[] vv = {3, 5, 7, 10, 20};
+                int cur = 2;
+                for (int i = 0; i < vv.length; i++) if (vv[i] == AutoBackup.keep(a)) cur = i;
+                Dlg.single(a, "保留份数", o, cur, w -> {
+                    AutoBackup.setKeep(a, vv[w]);
+                    render();
+                });
+            }));
+            box.addView(a.settingRow("sync", "立即备份一次",
+                    AutoBackup.lastText(), v -> {
+                AutoBackup.Result r = AutoBackup.runNow(a);
+                a.toast(r.ok ? "备份成功：" + r.msg : "备份失败：" + r.msg);
+                render();
+            }));
+        }
+
+        box.addView(noteText("本地备份与云端同步用同一套加密格式，"
+                + "没有主密码打不开。\n备份文件存在你授权的文件夹里，"
+                + "可以用 FolderSync 之类的工具再同步到别处。"));
+
+        openSub(p);
+    }
+
+    private void pickBackupDir() {
+        try {
+            a.startActivityForResult(BackupDir.pickIntent(), 9001);
+        } catch (Exception e) {
+            a.toast("打不开文件夹选择器");
+        }
+    }
+
+    /** 由 Activity 转过来：备份文件夹授权结果 */
+    public void onBackupDirResult(android.content.Intent data) {
+        if (data == null || data.getData() == null) return;
+        android.net.Uri u = data.getData();
+        if (BackupDir.save(a, u)) {
+            a.toast("已授权：" + BackupDir.name(a));
+            AutoBackup.setEnabled(a, true);
+        } else {
+            a.toast("授权失败，请重试");
+        }
+        render();
+    }
+
+
+    /* ---------------- 分类与标签 ---------------- */
+
+    private String catTagSummary() {
+        int nt = 0;
+        List<String> t = Db.get(a).allTags();
+        if (t != null) nt = t.size();
+        int nc = Db.get(a).catsRaw().size();
+        return nc + " 个分类 · " + nt + " 个标签";
+    }
+
+    private void catTagPage() {
+        LinearLayout p = subPage("分类与标签");
+        LinearLayout box = pageBox(p);
+
+        box.addView(a.section("分类"));
+        box.addView(a.settingRow("app", "自定义分类",
+                "新建 / 改名 / 换图标 / 换色 / 删除", v -> cats(0, null)));
+
+        box.addView(a.section("标签"));
+        int nt = 0;
+        List<String> t = Db.get(a).allTags();
+        if (t != null) nt = t.size();
+        box.addView(a.settingRow("copy", "标签管理",
+                nt == 0 ? "还没有标签" : nt + " 个标签，可改名或批量移除",
+                v -> a.startActivity(new android.content.Intent(a, TagManagerActivity.class))));
+
+        box.addView(noteText("分类是一对一的（一条账号只能属于一个分类），\n"
+                + "标签可以打多个，两者用途不同。"));
+
+        openSub(p);
+    }
+
+
+    /** 附件概况：个数 + 占用 + 有无孤儿 */
+    private String attachSummary() {
+        List<Attach.Item> all = Attach.listAll(a);
+        if (all.isEmpty()) return "还没有附件";
+        int orphans = Attach.orphans(a).size();
+        return all.size() + " 个 · " + Attach.sizeText(Attach.totalSize(a))
+                + (orphans > 0 ? " · " + orphans + " 个待清理" : "");
     }
 
 }
