@@ -130,24 +130,10 @@ public final class SettingsView {
         }));
         main.addView(a.settingRow("lock", "填充与悬浮窗", fillSummary(), v -> fillPage()));
         main.addView(a.settingRow("app", "分类与标签", catTagSummary(), v -> catTagPage()));
-        main.addView(a.settingRow("image", "图标与图片", mediaSummary(), v -> mediaPage()));
-
-        /* 刘海屏：只在设备确实有刘海时才显示这一项，避免对多数用户造成干扰 */
-        if (Cutout.has(a)) {
-            main.addView(a.section("显示"));
-            main.addView(toggleRow("app", "延伸到刘海区域",
-                    Cutout.extend(a) ? "背景铺满到挖孔两侧，内容自动避让" : "内容整体下移，避开刘海",
-                    Cutout.extend(a), on -> {
-                Cutout.setExtend(on);
-                Ico.clearCache();
-                a.recreate();
-            }));
-        }
+        main.addView(a.settingRow("image", "显示与图片", mediaSummary(), v -> mediaPage()));
 
         main.addView(a.section("安全"));
-        main.addView(a.settingRow("fingerprint", "生物解锁", bioSummary(), v -> bioPage()));
-        main.addView(a.settingRow("edit", "修改主密码", "全部数据会重新加密", v -> changePwd()));
-        main.addView(a.settingRow("shield", "锁定与隐私", privacySummary(), v -> privacyPage()));
+        main.addView(a.settingRow("fingerprint", "解锁与隐私", securitySummary(), v -> securityPage()));
 
         main.addView(a.section("关于"));
         main.addView(a.settingRow("shield", "关于应用",
@@ -1551,7 +1537,7 @@ public final class SettingsView {
     }
 
     private void mediaPage() {
-        LinearLayout p = subPage("图标与图片");
+        LinearLayout p = subPage("显示与图片");
         LinearLayout box = pageBox(p);
 
         box.addView(a.section("账号图标"));
@@ -1568,21 +1554,39 @@ public final class SettingsView {
         box.addView(a.settingRow("image", "附件管理", attachSummary(),
                 v -> a.startActivity(new Intent(a, AttachActivity.class))));
 
+        /* 刘海屏：只在设备确实有刘海时才显示这一项。
+           原先在主列表独占一个「显示」分区，只为这一项建分区不划算，
+           收进这里后主列表项数在所有设备上都一致。 */
+        if (Cutout.has(a)) {
+            box.addView(a.section("刘海屏"));
+            box.addView(toggleRow("app", "延伸到刘海区域",
+                    Cutout.extend(a) ? "背景铺满到挖孔两侧，内容自动避让" : "内容整体下移，避开刘海",
+                    Cutout.extend(a), on -> {
+                Cutout.setExtend(on);
+                Ico.clearCache();
+                a.recreate();
+            }));
+        }
+
         openSub(p);
     }
 
     /* ---------------- 锁定与隐私（原「自动锁定」「剪贴板」「禁止截屏」3 项合 1） ---------------- */
 
-    private String privacySummary() {
+    private String securitySummary() {
+        String bio = KeystoreHelper.hasBio(a) ? "指纹" : (Prefs.getB("face_on", false) ? "人脸" : "仅密码");
         String lock = lockName();
-        String clip = Prefs.getI("clip_sec", 45) + " 秒清空剪贴板";
         String cap = Prefs.getB("block_capture", true) ? "已禁截屏" : "允许截屏";
-        return lock + " · " + clip + " · " + cap;
+        return bio + " · " + lock + " · " + cap;
     }
 
-    private void privacyPage() {
-        LinearLayout p = subPage("锁定与隐私");
+    private void securityPage() {
+        LinearLayout p = subPage("解锁与隐私");
         LinearLayout box = pageBox(p);
+
+        box.addView(a.section("解锁方式"));
+        box.addView(a.settingRow("fingerprint", "生物解锁", bioSummary(), v -> bioPage()));
+        box.addView(a.settingRow("edit", "修改主密码", "全部数据会重新加密", v -> changePwd()));
 
         box.addView(a.section("闲置时长"));
         String[] names = {"1 分钟", "3 分钟", "5 分钟", "15 分钟", "30 分钟", "永不（不推荐）"};
