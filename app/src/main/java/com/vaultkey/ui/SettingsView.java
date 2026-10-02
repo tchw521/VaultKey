@@ -118,54 +118,19 @@ public final class SettingsView {
         main.addView(jianguoyunCard());
 
         main.addView(statsCard());
-        main.addView(a.section("通用"));
-        main.addView(a.settingRow("sync", "数据备份", backupSummary(), v -> backupPage()));
-        main.addView(a.settingRow("sync", "坚果云同步", Sync.configured() ? Sync.lastSyncText() : "未配置账号",
-                v -> {
-                    if (syncPage == null) syncPage = new SyncView(a, this::onBack, host);
-                    syncPage.refresh();
-                    openSub(syncPage.view());
-                }));
-        main.addView(a.settingRow("tools", "工具箱", "密码生成 · 强度检测 · 安全体检", v -> {
+        main.addView(a.section("数据"));
+        main.addView(a.settingRow("sync", "备份与同步", dataSummary(), v -> dataPage()));
+
+        main.addView(a.section("功能"));
+        main.addView(a.settingRow("tools", "工具箱",
+                "密码生成 · 强度检测 · 安全体检 · 找回账号", v -> {
             if (toolsPage == null) toolsPage = new ToolsView(a, host, this::onBack);
             toolsPage.refresh();
             openSub(toolsPage.view());
         }));
-        main.addView(a.settingRow("lock", "自动填充",
-                Prefs.getB("af_strict", true) ? "已开启 · 严格识别" : "已开启 · 宽松识别",
-                v -> autofillPage()));
+        main.addView(a.settingRow("lock", "填充与悬浮窗", fillSummary(), v -> fillPage()));
         main.addView(a.settingRow("app", "分类与标签", catTagSummary(), v -> catTagPage()));
-        main.addView(a.settingRow("image", "账号图标", iconSummary(), v -> iconPage()));
-        main.addView(a.settingRow("image", "附件管理", attachSummary(),
-                v -> a.startActivity(new Intent(a, AttachActivity.class))));
-        main.addView(a.settingRow("app", "悬浮窗",
-                FloatService.enabled()
-                        ? (FloatService.canDraw(a) ? "已开启，在其他应用上方可直接取账号" : "已开启，但还缺悬浮窗权限")
-                        : "在其他应用的登录界面上方显示匹配账号",
-                v -> floatDialog()));
-        main.addView(a.settingRow("image", "启动页",
-                Splash.enabled(a) ? (Splash.has(a) ? "自定义开屏图 · 带动画" : "默认标志 · 带动画")
-                        : "已关闭，启动直接进解锁",
-                v -> splashPage()));
-
-        main.addView(a.settingRow("edit", "批量处理账号",
-                "多选后批量改分类 / 标签 / 收藏 / 删除",
-                v -> { host.showBatch(); }));
-
-        main.addView(a.section("换机 / 查找"));
-        main.addView(a.settingRow("web", "找回账号",
-                "登录时不知道用的哪个邮箱？按网站聚合查看",
-                v -> a.startActivity(new Intent(a, RecoverActivity.class))));
-        main.addView(a.settingRow("sync", "换机直传",
-                "两台手机连同一 WiFi，配对码确认后整个密码库直接过去",
-                v -> Dlg.pick(a, "换机直传",
-                        new String[]{"我是旧手机，发送出去", "我是新手机，接收过来"},
-                        w -> a.startActivity(new Intent(a, TransferActivity.class)
-                                .putExtra(TransferActivity.EXTRA_MODE, w == 0 ? "send" : "recv")))));
-        /* 原先这里有「回收站 / 导入数据 / 导出数据」三项，现已移除：
-           - 回收站：左侧导航栏底部本来就有，且回收站内已能切换账号与卡片，重复入口
-           - 导入 / 导出：与「坚果云同步」页里的同类项重复，两个入口容易让人分不清
-             「本地文件导入导出」和「云端同步」的区别。功能未删，仍在坚果云同步页内。 */
+        main.addView(a.settingRow("image", "图标与图片", mediaSummary(), v -> mediaPage()));
 
         /* 刘海屏：只在设备确实有刘海时才显示这一项，避免对多数用户造成干扰 */
         if (Cutout.has(a)) {
@@ -182,36 +147,11 @@ public final class SettingsView {
         main.addView(a.section("安全"));
         main.addView(a.settingRow("fingerprint", "生物解锁", bioSummary(), v -> bioPage()));
         main.addView(a.settingRow("edit", "修改主密码", "全部数据会重新加密", v -> changePwd()));
-        main.addView(a.settingRow("key", "自动锁定", lockName(), v -> lockPage()));
-        main.addView(a.settingRow("copy", "剪贴板自动清空", Prefs.getI("clip_sec", 45) + " 秒后清空", v -> {
-            String[] o = {"30 秒", "45 秒", "60 秒", "120 秒"};
-            final int[] vv = {30, 45, 60, 120};
-            Dlg.pick(a, "剪贴板清空", o, w -> {
-                Prefs.putI("clip_sec", vv[w]);
-                render();
-            });
-        }));
-        main.addView(toggleRow("camera", "禁止截屏",
-                Prefs.getB("block_capture", true) ? "已开启，界面无法被截屏或录屏" : "已关闭，允许截屏",
-                Prefs.getB("block_capture", true), (on) -> {
-            Prefs.putB("block_capture", on);
-            a.applySecure();
-            render();
-        }));
-
-        /* 「外观」整组已移除：换皮肤挪到顶栏右上角的调色板图标。
-           设置中心只保留「关于 / 清空回收站」等真正适合放设置的内容。 */
+        main.addView(a.settingRow("shield", "锁定与隐私", privacySummary(), v -> privacyPage()));
 
         main.addView(a.section("关于"));
-        main.addView(a.settingRow("shield", "关于应用", "v" + appVer() + " · 开发者 tchw521", v -> aboutDialog()));
-        main.addView(a.settingRow("download", "检查更新",
-                "当前 v" + appVer() + " · GitHub / 蓝奏云", v -> checkUpdate()));
-        main.addView(a.settingRow("gift", "赞助作者", "如果密盒帮到了你", v -> sponsorDialog()));
-        main.addView(a.settingRow("trash", "清空回收站", "彻底删除已删除的账号与卡片", v -> {
-            Db.get(a).emptyTrash();
-            for (Db.Card c : Db.get(a).cardsRaw()) if (c.del) Db.get(a).hardDeleteCard(c.id);
-            a.toast("已清空");
-        }));
+        main.addView(a.settingRow("shield", "关于应用",
+                "v" + appVer() + " · 开发者 tchw521", v -> aboutPage()));
     }
 
     private View statsCard() {
@@ -1316,28 +1256,6 @@ public final class SettingsView {
 
     /* ---------------- 自动填充（原 2 项合 1） ---------------- */
 
-    private void autofillPage() {
-        LinearLayout p = subPage("自动填充");
-        LinearLayout box = pageBox(p);
-
-        box.addView(a.section("识别"));
-        box.addView(toggleRow("shield", "严格识别登录框",
-                "开启后聊天框、搜索框等不会误弹填充提示",
-                Prefs.getB("af_strict", true), on -> {
-            Prefs.putB("af_strict", on);
-            render();
-        }));
-        box.addView(noteText("关闭后任何输入框都可能提示填充，\n"
-                + "少数 App 的登录框要靠这个才能识别到。"));
-
-        box.addView(a.section("开启方式"));
-        box.addView(a.settingRow("lock", "系统自动填充",
-                "Android 8+ 推荐，由系统识别登录框",
-                v -> a.startActivity(new Intent(a, AutofillGuideActivity.class))));
-
-        openSub(p);
-    }
-
     /* ---------------- 账号图标（原 2 项合 1） ---------------- */
 
     private String iconSummary() {
@@ -1366,32 +1284,6 @@ public final class SettingsView {
     }
 
     /* ---------------- 自动锁定（原 2 项合 1） ---------------- */
-
-    private void lockPage() {
-        LinearLayout p = subPage("自动锁定");
-        LinearLayout box = pageBox(p);
-
-        box.addView(a.section("闲置时长"));
-        String[] names = {"1 分钟", "3 分钟", "5 分钟", "15 分钟", "30 分钟", "永不（不推荐）"};
-        final int[] vv = {60000, 180000, 300000, 900000, 1800000, Integer.MAX_VALUE};
-        int cur = Prefs.getI("lock_ms", 180000);
-        int sel = 1;
-        for (int i = 0; i < vv.length; i++) if (vv[i] == cur) sel = i;
-        box.addView(pickRow(names, sel, i -> {
-            Prefs.putI("lock_ms", vv[i]);
-            render();
-        }));
-
-        box.addView(a.section("更快上锁"));
-        box.addView(toggleRow("shield", "切到后台立即锁定",
-                "离开界面立刻上锁，不等上面的时长",
-                Prefs.getB("lock_on_resume", false), on -> {
-            Prefs.putB("lock_on_resume", on);
-            render();
-        }));
-
-        openSub(p);
-    }
 
     /* ---------------- 子页通用零件 ---------------- */
 
@@ -1447,17 +1339,9 @@ public final class SettingsView {
 
     /* ---------------- 数据备份（云端 + 本地自动备份） ---------------- */
 
-    private String backupSummary() {
-        boolean cloud = Sync.configured();
-        boolean local = AutoBackup.enabled(a);
-        if (cloud && local) return "云端 + 本地自动 · " + AutoBackup.lastText();
-        if (cloud) return "云端已配置 · 本地自动未开";
-        if (local) return "本地自动 · " + AutoBackup.lastText();
-        return "均未开启";
-    }
-
-    private void backupPage() {
-        LinearLayout p = subPage("数据备份");
+    /** 「数据备份」+「坚果云同步」+「换机直传」+「清空回收站」合并成一项 */
+    private void dataPage() {
+        LinearLayout p = subPage("备份与同步");
         LinearLayout box = pageBox(p);
 
         box.addView(a.section("云端同步"));
@@ -1502,11 +1386,54 @@ public final class SettingsView {
             }));
         }
 
+        box.addView(a.section("换机"));
+        box.addView(a.settingRow("sync", "换机直传",
+                "两台手机连同一 WiFi，配对码确认后整个密码库直接过去",
+                v -> Dlg.pick(a, "换机直传",
+                        new String[]{"我是旧手机，发送出去", "我是新手机，接收过来"},
+                        w -> a.startActivity(new Intent(a, TransferActivity.class)
+                                .putExtra(TransferActivity.EXTRA_MODE, w == 0 ? "send" : "recv")))));
+
+        box.addView(a.section("清理"));
+        box.addView(a.settingRow("trash", "清空回收站",
+                "彻底删除已删除的账号与卡片，不可恢复", v -> {
+            int n = trashCount();
+            if (n == 0) { a.toast("回收站是空的"); return; }
+            Dlg.danger(a, "清空回收站",
+                    "回收站里有 " + n + " 项，删除后无法恢复。", "彻底删除", () -> {
+                Db.get(a).emptyTrash();
+                for (Db.Card c : Db.get(a).cardsRaw()) if (c.del) Db.get(a).hardDeleteCard(c.id);
+                a.toast("已清空");
+                render();
+            });
+        }));
+
         box.addView(noteText("本地备份与云端同步用同一套加密格式，"
                 + "没有主密码打不开。\n备份文件存在你授权的文件夹里，"
                 + "可以用 FolderSync 之类的工具再同步到别处。"));
 
         openSub(p);
+    }
+
+    private String dataSummary() {
+        boolean cloud = Sync.configured();
+        boolean local = AutoBackup.enabled(a);
+        if (cloud && local) return "云端 + 本地自动 · " + AutoBackup.lastText();
+        if (cloud) return "云端已配置 · 本地自动未开";
+        if (local) return "本地自动 · " + AutoBackup.lastText();
+        return "云端 / 本地均未开启";
+    }
+
+    /** 回收站里有多少项（账号 + 卡片） */
+    private int trashCount() {
+        int n = 0;
+        try {
+            for (Db.Entry e : Db.get(a).list(null, false, true, null, 0)) n++;
+        } catch (Exception ignored) { }
+        try {
+            for (Db.Card c : Db.get(a).cardsRaw()) if (c.del) n++;
+        } catch (Exception ignored) { }
+        return n;
     }
 
     private void pickBackupDir() {
@@ -1571,6 +1498,150 @@ public final class SettingsView {
         int orphans = Attach.orphans(a).size();
         return all.size() + " 个 · " + Attach.sizeText(Attach.totalSize(a))
                 + (orphans > 0 ? " · " + orphans + " 个待清理" : "");
+    }
+
+
+    /* ---------------- 填充与悬浮窗（原「自动填充」「悬浮窗」2 项合 1） ---------------- */
+
+    private String fillSummary() {
+        String af = Prefs.getB("af_strict", true) ? "严格识别" : "宽松识别";
+        String fl = FloatService.enabled()
+                ? (FloatService.canDraw(a) ? "悬浮窗已开" : "悬浮窗缺权限")
+                : "悬浮窗未开";
+        return af + " · " + fl;
+    }
+
+    private void fillPage() {
+        LinearLayout p = subPage("填充与悬浮窗");
+        LinearLayout box = pageBox(p);
+
+        box.addView(a.section("自动填充"));
+        box.addView(toggleRow("shield", "严格识别登录框",
+                "开启后聊天框、搜索框等不会误弹填充提示",
+                Prefs.getB("af_strict", true), on -> {
+            Prefs.putB("af_strict", on);
+            render();
+        }));
+        box.addView(noteText("关闭后任何输入框都可能提示填充，\n"
+                + "少数 App 的登录框要靠这个才能识别到。"));
+        box.addView(a.settingRow("lock", "系统自动填充",
+                "Android 8+ 推荐，由系统识别登录框",
+                v -> a.startActivity(new Intent(a, AutofillGuideActivity.class))));
+
+        box.addView(a.section("悬浮窗"));
+        box.addView(a.settingRow("app", "悬浮窗设置",
+                FloatService.enabled()
+                        ? (FloatService.canDraw(a) ? "已开启，在其他应用上方可直接取账号"
+                                                   : "已开启，但还缺悬浮窗权限")
+                        : "在其他应用的登录界面上方显示匹配账号",
+                v -> floatDialog()));
+
+        openSub(p);
+    }
+
+    /* ---------------- 图标与图片（原「账号图标」「启动页」「附件管理」3 项合 1） ---------------- */
+
+    private String mediaSummary() {
+        String ic = iconSummary();
+        List<Attach.Item> all = Attach.listAll(a);
+        if (all.isEmpty()) return ic;
+        int orphans = Attach.orphans(a).size();
+        return ic + " · " + all.size() + " 附件"
+                + (orphans > 0 ? "（" + orphans + " 待清理）" : "");
+    }
+
+    private void mediaPage() {
+        LinearLayout p = subPage("图标与图片");
+        LinearLayout box = pageBox(p);
+
+        box.addView(a.section("账号图标"));
+        box.addView(a.settingRow("image", "账号图标", iconSummary(), v -> iconPage()));
+
+        box.addView(a.section("开屏"));
+        box.addView(a.settingRow("image", "启动页",
+                Splash.enabled(a)
+                        ? (Splash.has(a) ? "自定义开屏图 · 带动画" : "默认标志 · 带动画")
+                        : "已关闭，启动直接进解锁",
+                v -> splashPage()));
+
+        box.addView(a.section("附件"));
+        box.addView(a.settingRow("image", "附件管理", attachSummary(),
+                v -> a.startActivity(new Intent(a, AttachActivity.class))));
+
+        openSub(p);
+    }
+
+    /* ---------------- 锁定与隐私（原「自动锁定」「剪贴板」「禁止截屏」3 项合 1） ---------------- */
+
+    private String privacySummary() {
+        String lock = lockName();
+        String clip = Prefs.getI("clip_sec", 45) + " 秒清空剪贴板";
+        String cap = Prefs.getB("block_capture", true) ? "已禁截屏" : "允许截屏";
+        return lock + " · " + clip + " · " + cap;
+    }
+
+    private void privacyPage() {
+        LinearLayout p = subPage("锁定与隐私");
+        LinearLayout box = pageBox(p);
+
+        box.addView(a.section("闲置时长"));
+        String[] names = {"1 分钟", "3 分钟", "5 分钟", "15 分钟", "30 分钟", "永不（不推荐）"};
+        final int[] vv = {60000, 180000, 300000, 900000, 1800000, Integer.MAX_VALUE};
+        int cur = Prefs.getI("lock_ms", 180000);
+        int sel = 1;
+        for (int i = 0; i < vv.length; i++) if (vv[i] == cur) sel = i;
+        box.addView(pickRow(names, sel, i -> {
+            Prefs.putI("lock_ms", vv[i]);
+            render();
+        }));
+
+        box.addView(a.section("更快上锁"));
+        box.addView(toggleRow("shield", "切到后台立即锁定",
+                "离开界面立刻上锁，不等上面的时长",
+                Prefs.getB("lock_on_resume", false), on -> {
+            Prefs.putB("lock_on_resume", on);
+            render();
+        }));
+
+        box.addView(a.section("剪贴板"));
+        box.addView(a.settingRow("copy", "剪贴板自动清空",
+                Prefs.getI("clip_sec", 45) + " 秒后清空", v -> {
+            String[] o = {"30 秒", "45 秒", "60 秒", "120 秒"};
+            final int[] cv = {30, 45, 60, 120};
+            Dlg.pick(a, "剪贴板清空", o, w -> {
+                Prefs.putI("clip_sec", cv[w]);
+                render();
+            });
+        }));
+
+        box.addView(a.section("截屏"));
+        box.addView(toggleRow("camera", "禁止截屏",
+                Prefs.getB("block_capture", true) ? "已开启，界面无法被截屏或录屏" : "已关闭，允许截屏",
+                Prefs.getB("block_capture", true), (on) -> {
+            Prefs.putB("block_capture", on);
+            a.applySecure();
+            render();
+        }));
+
+        openSub(p);
+    }
+
+    /* ---------------- 关于（原「关于应用」「检查更新」「赞助作者」3 项合 1） ---------------- */
+
+    private void aboutPage() {
+        LinearLayout p = subPage("关于");
+        LinearLayout box = pageBox(p);
+
+        box.addView(a.section("版本"));
+        box.addView(a.settingRow("shield", "密盒 VaultKey", "v" + appVer()
+                + " · 开发者 tchw521", v -> aboutDialog()));
+        box.addView(a.settingRow("download", "检查更新",
+                "当前 v" + appVer() + " · GitHub / 蓝奏云", v -> checkUpdate()));
+
+        box.addView(a.section("支持"));
+        box.addView(a.settingRow("gift", "赞助作者", "如果密盒帮到了你", v -> sponsorDialog()));
+
+        openSub(p);
     }
 
 }

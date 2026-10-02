@@ -172,6 +172,12 @@ public final class ToolsView {
                 a.startActivity(new android.content.Intent(a, HealthActivity.class)));
         box.addView(full);
 
+        /* 「找回账号」原在设置中心「换机 / 查找」区，与工具同类，收进来 */
+        box.addView(a.section("查找"));
+        box.addView(a.settingRow("web", "找回账号",
+                "登录时不知道用的哪个邮箱？按网站聚合查看",
+                v -> a.startActivity(new android.content.Intent(a, RecoverActivity.class))));
+
     }
 
     private View backRow(String t) {
