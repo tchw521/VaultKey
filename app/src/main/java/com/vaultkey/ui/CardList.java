@@ -22,6 +22,7 @@ import com.vaultkey.data.Attach;
 import com.vaultkey.data.Db;
 import com.vaultkey.data.Session;
 import com.vaultkey.util.Ico;
+import com.vaultkey.util.SettingsKit;
 import com.vaultkey.util.Liquid;
 import com.vaultkey.util.Ui;
 import com.vaultkey.util.SimpleAdapter;
@@ -127,7 +128,10 @@ public final class CardList {
             TextView s = new TextView(a);
             s.setText(c.kind + " · " + preview(c));
             s.setTextSize(11.5f);
+
             s.setTextColor(Ui.attr(a, R.attr.textColor2));
+
+            /* 灰色说明文字，样式统一走 SettingsKit.note 的同款参数 */
             s.setSingleLine(true);
             s.setEllipsize(android.text.TextUtils.TruncateAt.END);
             mid.addView(s);

@@ -673,7 +673,18 @@ public final class MainActivity extends BaseActivity implements ToolsView.Host {
 
     private static final int REQ_EXPORT = 42, REQ_IMPORT = 43;
     private static final int REQ_EXPORT_BW = 44, REQ_IMPORT_BW = 45;
+    /**
+     * 待导出的内容。
+     *
+     * 注意这里存的是**明文** —— 明文 CSV 和 Bitwarden JSON 导出都不加密
+     * （Bitwarden 格式本身就是明文 JSON，只是文件用 .json 而非 .dbox）。
+     * 所以写完必须立刻清掉：否则全部密码的明文副本会一直停在内存里，
+     * 直到 Activity 销毁或下一次导出覆盖它。
+     */
     private String pendingExport;
+
+    /** 导出落盘后调用：清掉内存里的明文 */
+    private void clearPendingExport() { pendingExport = null; }
 
     /* ---------------- Bitwarden 格式导出 ---------------- */
 
@@ -778,6 +789,9 @@ public final class MainActivity extends BaseActivity implements ToolsView.Host {
                                 .append(Csv.escape(e.totp)).append('\n');
                     }
                     pendingExport = sb.toString();
+                    /* 明文已经转存到 pendingExport，把 sb 里的副本抹掉。
+                       StringBuilder 可以就地清零，String 不行 —— 所以这步值得做 */
+                    sb.setLength(0);
                     saveExport("vaultkey-export.csv", "text/csv", REQ_EXPORT);
                 })
                 .setNegativeButton("取消", null).show();
@@ -798,6 +812,8 @@ public final class MainActivity extends BaseActivity implements ToolsView.Host {
                 catch (Exception e) { data = pendingExport.getBytes(); }
                 Uri f = BackupDir.write(this, fileName, mime, data);
                 if (f != null) {
+                    /* 已落盘，内存里的明文立刻清掉 */
+                    clearPendingExport();
                     toast("已导出到「" + BackupDir.name(this) + "」");
                     return;
                 }
@@ -844,6 +860,7 @@ public final class MainActivity extends BaseActivity implements ToolsView.Host {
                 java.io.OutputStream o = getContentResolver().openOutputStream(data.getData());
                 if (o != null) {
                     o.write(pendingExport.getBytes("UTF-8"));
+                    clearPendingExport();
                     o.close();
                     toast("已导出");
                 }
@@ -853,6 +870,7 @@ public final class MainActivity extends BaseActivity implements ToolsView.Host {
                 java.io.OutputStream o = getContentResolver().openOutputStream(data.getData());
                 if (o != null) {
                     o.write(pendingExport.getBytes("UTF-8"));
+                    clearPendingExport();
                     o.close();
                     toast("已导出 Bitwarden 格式");
                 }

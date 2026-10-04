@@ -18,6 +18,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import com.vaultkey.R;
 import com.vaultkey.util.Ico;
+import com.vaultkey.util.SettingsKit;
 import com.vaultkey.util.MiniOcr;
 import com.vaultkey.util.Ui;
 import java.io.InputStream;
@@ -303,7 +304,10 @@ public final class CardOcrActivity extends BaseActivity {
             TextView n = new TextView(this);
             n.setText(kv[0]);
             n.setTextSize(11.5f);
+
             n.setTextColor(Ui.attr(this, R.attr.textColor2));
+
+            /* 灰色说明文字，样式统一走 SettingsKit.note 的同款参数 */
             row.addView(n);
 
             EditText e = new EditText(this);

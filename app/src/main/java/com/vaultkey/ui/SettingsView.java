@@ -40,6 +40,7 @@ import com.vaultkey.util.Skin;
 import com.vaultkey.util.IconFill;
 import com.vaultkey.util.Ui;
 import com.vaultkey.util.Dlg;
+import com.vaultkey.util.SettingsKit;
 import java.util.List;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -68,7 +69,6 @@ public final class SettingsView {
     private static final String[] ICONS = {"box", "cloud", "image", "audio", "web", "app",
             "game", "bank", "work", "mail", "chat", "shop", "more"};
 
-    public interface OnIdx { void on(int idx); }
 
     public SettingsView(BaseActivity a, ToolsView.Host host) {
         this.a = a;
@@ -397,56 +397,10 @@ public final class SettingsView {
         openSub(p);
     }
 
-    private View toggleRow2(String[] names, int sel, final OnIdx cb) {
-        LinearLayout l = new LinearLayout(a);
-        l.setOrientation(LinearLayout.HORIZONTAL);
-        l.setBackground(Ui.glass(a, 16, R.attr.cardColor, R.attr.strokeColor));
-        int p = Ui.dp(a, 10);
-        l.setPadding(p, p, p, p);
-        for (int i = 0; i < names.length; i++) {
-            final int idx = i;
-            TextView t = new TextView(a);
-            t.setText(names[i]);
-            t.setTextSize(12);
-            t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-            t.setGravity(Gravity.CENTER);
-            boolean on = i == sel;
-            android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
-            g.setCornerRadius(999f);
-            g.setColor(on ? Ui.withAlpha(a.accent(), 40) : Ui.withAlpha(Ui.attr(a, R.attr.textColor2), 22));
-            if (on) g.setStroke(Math.max(1, Ui.dp(a, 1)), a.accent());
-            t.setBackground(g);
-            t.setTextColor(on ? a.accent() : Ui.attr(a, R.attr.textColor2));
-            t.setPadding(Ui.dp(a, 6), Ui.dp(a, 8), Ui.dp(a, 6), Ui.dp(a, 8));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            if (i > 0) lp.setMarginStart(Ui.dp(a, 6));
-            t.setLayoutParams(lp);
-            Ui.press(t);
-            t.setOnClickListener(x -> {
-                for (int k = 0; k < l.getChildCount(); k++) {
-                    View c = l.getChildAt(k);
-                    if (!(c instanceof TextView)) continue;
-                    boolean s2 = k == idx;
-                    android.graphics.drawable.GradientDrawable gg = new android.graphics.drawable.GradientDrawable();
-                    gg.setCornerRadius(999f);
-                    gg.setColor(s2 ? Ui.withAlpha(a.accent(), 40)
-                            : Ui.withAlpha(Ui.attr(a, R.attr.textColor2), 22));
-                    if (s2) gg.setStroke(Math.max(1, Ui.dp(a, 1)), a.accent());
-                    c.setBackground(gg);
-                    ((TextView) c).setTextColor(s2 ? a.accent() : Ui.attr(a, R.attr.textColor2));
-                }
-                cb.on(idx);
-            });
-            l.addView(t);
-        }
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.bottomMargin = Ui.dp(a, 8);
-        l.setLayoutParams(lp);
-        return l;
+    /** 横向分段开关，复用 SettingsKit */
+    private View toggleRow2(String[] names, int sel, final SettingsKit.OnIdx cb) {
+        return SettingsKit.segRow(a, names, sel, cb);
     }
-
     private static final int REQ_SPLASH = 9001, REQ_AVATAR = 9002;
 
     private void pickSplash() {
@@ -1273,53 +1227,16 @@ public final class SettingsView {
 
     /* ---------------- 子页通用零件 ---------------- */
 
-    /** 建一个带标题的子页容器 */
-    private LinearLayout subPage(String title) {
-        LinearLayout p = new LinearLayout(a);
-        p.setOrientation(LinearLayout.VERTICAL);
-        p.setBackgroundColor(Ui.attr(a, R.attr.bgColor));
-        android.widget.ScrollView sv = new android.widget.ScrollView(a);
-        p.addView(sv, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        LinearLayout box = new LinearLayout(a);
-        box.setOrientation(LinearLayout.VERTICAL);
-        sv.addView(box);
-        TextView t = a.title(title, 20);
-        t.setPadding(0, 0, 0, Ui.dp(a, 12));
-        box.addView(t);
-        p.setTag(box);
-        return p;
-    }
+    /* 子页零件改用 SettingsKit，与其他设置类界面共用一份实现 */
+    private LinearLayout subPage(String title) { return SettingsKit.page(a, title); }
 
-    private LinearLayout pageBox(LinearLayout p) {
-        return (LinearLayout) p.getTag();
-    }
+    private LinearLayout pageBox(LinearLayout p) { return SettingsKit.box(p); }
 
-    private TextView noteText(String txt) {
-        TextView n = new TextView(a);
-        n.setText(txt);
-        n.setTextSize(11.5f);
-        n.setTextColor(Ui.attr(a, R.attr.textColor2));
-        n.setPadding(Ui.dp(a, 2), Ui.dp(a, 4), Ui.dp(a, 2), 0);
-        return n;
-    }
+    private TextView noteText(String txt) { return SettingsKit.note(a, txt); }
 
     /** 单选行：一组文字，选中项高亮 */
-    private View pickRow(String[] names, int sel, final OnIdx cb) {
-        LinearLayout l = new LinearLayout(a);
-        l.setOrientation(LinearLayout.VERTICAL);
-        for (int i = 0; i < names.length; i++) {
-            final int idx = i;
-            TextView t = new TextView(a);
-            t.setText((i == sel ? "✓  " : "    ") + names[i]);
-            t.setTextSize(14);
-            t.setTextColor(i == sel ? Ui.accent(a) : Ui.attr(a, R.attr.textColor));
-            t.setPadding(Ui.dp(a, 14), Ui.dp(a, 11), Ui.dp(a, 14), Ui.dp(a, 11));
-            t.setOnClickListener(v -> cb.on(idx));
-            l.addView(t);
-        }
-        l.setBackground(Ui.glass(a, 16, R.attr.cardColor, R.attr.strokeColor));
-        return l;
+    private View pickRow(String[] names, int sel, final SettingsKit.OnIdx cb) {
+        return SettingsKit.pickRow(a, names, sel, cb);
     }
 
 

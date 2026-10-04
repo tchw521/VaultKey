@@ -15,6 +15,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import com.vaultkey.R;
 import com.vaultkey.util.Ico;
+import com.vaultkey.util.SettingsKit;
 import com.vaultkey.util.Icons;
 import com.vaultkey.util.Ui;
 import com.vaultkey.util.SimpleAdapter;
@@ -46,7 +47,10 @@ public final class AppPickerActivity extends BaseActivity {
 
         hint = new TextView(this);
         hint.setTextSize(11.5f);
+
         hint.setTextColor(Ui.attr(this, R.attr.textColor2));
+
+        /* 灰色说明文字，样式统一走 SettingsKit.note 的同款参数 */
         hint.setPadding(Ui.dp(this, 2), Ui.dp(this, 8), 0, 0);
         hint.setVisibility(View.GONE);
         body.addView(hint);

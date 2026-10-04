@@ -160,10 +160,10 @@ public abstract class BaseActivity extends Activity {
 
     /* ---------------- 通用组件 ---------------- */
 
-    protected int accent() { return Skin.accent(this); }
+    public int accent() { return Skin.accent(this); }
     protected int accent2() { return Skin.accent2(this); }
     protected int accent3() { return Ui.accent2(this); }
-    protected TextView title(String s, int size) {
+    public TextView title(String s, int size) {
         TextView t = new TextView(this);
         t.setText(s);
         t.setTextColor(Ui.attr(this, R.attr.textColor));
@@ -254,7 +254,7 @@ public abstract class BaseActivity extends Activity {
         return iv;
     }
     /** 圆形图标底盘（分类用） */
-    protected FrameLayout iconBadge(String name, long color, int sizeDp) {
+    public FrameLayout iconBadge(String name, long color, int sizeDp) {
         int s = Ui.dp(this, sizeDp);
         FrameLayout f = new FrameLayout(this);
         f.setLayoutParams(new LinearLayout.LayoutParams(s, s));
