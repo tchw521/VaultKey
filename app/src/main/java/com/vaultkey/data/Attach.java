@@ -12,6 +12,8 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
@@ -30,6 +32,7 @@ public final class Attach {
 
     /** 从 Uri 读取 → 压缩 → 加密 → 落盘。返回文件名，失败返回 null */
     public static String save(Context c, Uri uri) {
+        dropListCache();
         byte[] raw = compress(c, uri);
         if (raw == null) return null;
         byte[] enc = Crypto.encrypt(Session.key(), raw);
@@ -63,6 +66,7 @@ public final class Attach {
 
     public static void remove(Context c, String name) {
         if (name == null || name.isEmpty()) return;
+        dropListCache();
         try { new File(dir(c), name).delete(); } catch (Exception ignored) { }
     }
 
@@ -79,8 +83,20 @@ public final class Attach {
         }
     }
 
+    /* 磁盘列举的短期缓存：设置页每次 render 都会算摘要，
+       而 render 在切开关后会被反复触发，没必要每次都扫目录。 */
+    private static volatile List<Item> listCache;
+    private static volatile long listCacheAt;
+    private static final long CACHE_MS = 3000;
+
+    /** 写完文件后要清掉，否则摘要还是旧的 */
+    private static void dropListCache() { listCache = null; listCacheAt = 0; }
+
     /** 磁盘上的全部附件，按时间倒序 */
     public static List<Item> listAll(Context c) {
+        List<Item> hit = listCache;
+        if (hit != null && System.currentTimeMillis() - listCacheAt < CACHE_MS) return hit;
+
         List<Item> out = new ArrayList<>();
         File[] fs = dir(c).listFiles();
         if (fs == null) return out;
@@ -96,6 +112,8 @@ public final class Attach {
             out.add(new Item(f.getName(), f.length(), when));
         }
         Collections.sort(out, (a, b) -> Long.compare(b.when, a.when));
+        listCache = out;
+        listCacheAt = System.currentTimeMillis();
         return out;
     }
 
@@ -124,20 +142,33 @@ public final class Attach {
         return n;
     }
 
-    /** 哪些卡片引用了这个附件（用于删除前提示） */
+    /**
+     * 哪些卡片引用了这个附件（用于删除前提示）。
+     * 列表逐行调用会很慢，批量场景请用 ownerMap()。
+     */
     public static String owners(Context c, String name) {
         if (name == null) return "";
-        StringBuilder sb = new StringBuilder();
+        return ownerMap(c).get(name);
+    }
+
+    /**
+     * 一次性算出「附件名 → 所属卡片名」的映射。
+     *
+     * 逐行调 owners() 会每次都全表查卡片并解密 ——
+     * 15 个附件滚一屏就是上百次。这里一次遍历建好 Map。
+     */
+    public static Map<String, String> ownerMap(Context c) {
+        Map<String, String> m = new HashMap<>();
         for (Db.Card cd : Db.get(c).cardsRaw()) {
+            String title = (cd.title == null || cd.title.isEmpty()) ? "未命名卡片" : cd.title;
             for (String s : Db.imgs(cd.imgs)) {
-                if (name.equals(s)) {
-                    if (sb.length() > 0) sb.append("、");
-                    sb.append(cd.title == null || cd.title.isEmpty() ? "未命名卡片" : cd.title);
-                    break;
-                }
+                if (s == null || s.isEmpty()) continue;
+                String old = m.get(s);
+                /* 一张图被多张卡片引用时都列出来 */
+                m.put(s, old == null ? title : old + "、" + title);
             }
         }
-        return sb.toString();
+        return m;
     }
 
     public static String sizeText(long bytes) {

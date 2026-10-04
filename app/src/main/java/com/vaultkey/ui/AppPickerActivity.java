@@ -200,4 +200,12 @@ public final class AppPickerActivity extends BaseActivity {
         public void onTextChanged(CharSequence s, int a, int b, int c) { }
         public void afterTextChanged(android.text.Editable s) { }
     }
+
+    @Override protected void onDestroy() {
+        super.onDestroy();
+        shutdown();
+    }
+    /** 关闭线程池，否则后台线程会一直挂着，Activity 也回收不掉 */
+    public void shutdown() { pool.shutdownNow(); }
+
 }

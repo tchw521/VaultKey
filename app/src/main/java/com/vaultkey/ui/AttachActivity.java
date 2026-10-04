@@ -18,6 +18,8 @@ import com.vaultkey.util.Ico;
 import com.vaultkey.util.SimpleAdapter;
 import com.vaultkey.util.Ui;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 /**
@@ -28,10 +30,19 @@ import java.util.List;
  */
 public final class AttachActivity extends BaseActivity {
 
-    private static final java.util.concurrent.ExecutorService POOL =
+    /**
+     * 缩略图解线程池。
+     *
+     * 必须是实例字段，不能是 static —— 之前写成 static，而 onDestroy 里调了
+     * shutdownNow()，导致第二次打开本页时线程池已关闭，
+     * execute() 抛 RejectedExecutionException，所有缩略图都不显示。
+     */
+    private final java.util.concurrent.ExecutorService pool =
             java.util.concurrent.Executors.newFixedThreadPool(2);
 
     private final List<Attach.Item> rows = new ArrayList<>();
+    /** 进入页面时算一次，别在 view() 里逐行查卡片表 */
+    private final Map<String, String> owners = new HashMap<>();
     private SimpleAdapter<Attach.Item> ad;
     private TextView head;
     private TextView empty;
@@ -108,7 +119,7 @@ public final class AttachActivity extends BaseActivity {
                 iv.setTag(want);
                 /* 解密缩略图放后台。用线程池而不是每行一条裸线程 ——
                    列表滚动时每条可见行都会触发一次，裸线程能瞬间开几十条 */
-                POOL.execute(() -> {
+                pool.execute(() -> {
                     android.graphics.Bitmap bm = Attach.load(AttachActivity.this, want, 120);
                     if (bm == null) return;
                     runOnUiThread(() -> {
@@ -127,7 +138,7 @@ public final class AttachActivity extends BaseActivity {
                 ml.setMarginStart(Ui.dp(AttachActivity.this, 12));
                 tx.setLayoutParams(ml);
 
-                String own = Attach.owners(AttachActivity.this, it.name);
+                String own = ownerOf(it.name);
                 TextView n = new TextView(AttachActivity.this);
                 n.setText(own.isEmpty() ? "（未被任何卡片引用）" : own);
                 n.setTextSize(14.5f);
@@ -153,7 +164,7 @@ public final class AttachActivity extends BaseActivity {
     private void act(int pos) {
         Attach.Item it = ad.at(pos);
         if (it == null) return;
-        String own = Attach.owners(this, it.name);
+        String own = ownerOf(it.name);
         String[] items = own.isEmpty()
                 ? new String[]{"查看大图", "删除这个文件"}
                 : new String[]{"查看大图", "删除（会同时从卡片上移除）"};
@@ -202,8 +213,16 @@ public final class AttachActivity extends BaseActivity {
         });
     }
 
+    /** 查本地 Map，没有就是孤儿 */
+    private String ownerOf(String name) {
+        String s = owners.get(name);
+        return s == null ? "" : s;
+    }
+
     private void reload() {
         rows.clear();
+        owners.clear();
+        owners.putAll(Attach.ownerMap(this));
         rows.addAll(Attach.listAll(this));
         ad.setData(rows);
         empty.setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
@@ -237,7 +256,7 @@ public final class AttachActivity extends BaseActivity {
     }
     @Override protected void onDestroy() {
         super.onDestroy();
-        POOL.shutdownNow();
+        pool.shutdownNow();
     }
 
 }

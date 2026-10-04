@@ -122,6 +122,7 @@ public final class SitePicker {
         if (d.getWindow() != null) {
             d.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         }
+        d.setOnDismissListener(x -> shutdown());
         d.show();
         if (preset != null && !preset.isEmpty()) run(d, preset);
     }
@@ -228,4 +229,8 @@ public final class SitePicker {
         }
         };
     }
+
+    /** 关闭线程池，否则后台线程会一直挂着，Activity 也回收不掉 */
+    public void shutdown() { pool.shutdownNow(); }
+
 }

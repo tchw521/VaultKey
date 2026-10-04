@@ -511,8 +511,14 @@ public final class Db extends SQLiteOpenHelper {
      * 注意返回的是快照：调用方只读、不改动里面的 Entry（要改请用 getByUuid 后 save）。
      */
     private volatile List<Entry> cache;
+    private volatile java.util.List<Card> cardCache;
 
-    private void dropCache() { cache = null; }
+    /**
+     * 清缓存。写操作后必须调，否则会读到旧数据。
+     * 卡片表和账号表共用一个开关 —— 两个缓存同时失效，
+     * 代价远小于漏清一个导致的数据不一致。
+     */
+    private void dropCache() { cache = null; cardCache = null; }
 
     public List<Entry> raw() {
         List<Entry> c0 = cache;
@@ -954,14 +960,28 @@ public final class Db extends SQLiteOpenHelper {
         return n;
     }
 
-    /** 某个标签用了多少次 */
+    /** 某个标签用了多少次。只在单次查询时用；批量场景请用 tagCounts() */
     public int tagCount(String tag) {
         if (tag == null) return 0;
-        int n = 0;
+        Integer n = tagCounts().get(tag);
+        return n == null ? 0 : n;
+    }
+
+    /**
+     * 一次性算出全部标签的使用次数。
+     *
+     * 列表里逐行调 tagCount() 是 O(行数 × 标签数) 次全表遍历 ——
+     * 滚一屏能跑出上千次。这里一次遍历搞定，之后查 Map 即可。
+     */
+    public java.util.Map<String, Integer> tagCounts() {
+        java.util.Map<String, Integer> m = new java.util.HashMap<>();
         for (Entry e : raw()) {
-            for (String t : tagList(e.tags)) if (tag.equals(t)) { n++; break; }
+            for (String t : tagList(e.tags)) {
+                Integer c = m.get(t);
+                m.put(t, c == null ? 1 : c + 1);
+            }
         }
-        return n;
+        return m;
     }
 
     /** 批量设置收藏 */
@@ -1128,13 +1148,22 @@ public final class Db extends SQLiteOpenHelper {
         return l;
     }
 
+    /**
+     * 全部卡片。
+     *
+     * 加了缓存是因为它会被反复调用：附件管理页每一行都要算「这张图属于哪张卡片」，
+     * 不缓存的话滚一屏就是几十次全表查询 + 解密。
+     */
     public java.util.List<Card> cardsRaw() {
+        java.util.List<Card> c0 = cardCache;
+        if (c0 != null) return c0;
         java.util.List<Card> l = new java.util.ArrayList<>();
         try {
             Cursor c = getReadableDatabase().query("cards", null, null, null, null, null, "_id ASC");
             while (c.moveToNext()) l.add(cardRow(c));
             c.close();
         } catch (Exception ignored) { }
+        cardCache = l;
         return l;
     }
 

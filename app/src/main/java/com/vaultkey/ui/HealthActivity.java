@@ -72,9 +72,28 @@ public final class HealthActivity extends BaseActivity {
         render();
     }
 
+    /** 体检结果缓存。render() 可能被调用多次（比对完成后重刷），别每次都全表扫一遍 */
+    private Health.Report report;
+
     private void render() {
+        if (report == null) {
+            /* 首次：全表扫描 + 解密，放后台，否则库大时页面会卡住白屏 */
+            box.removeAllViews();
+            TextView w = new TextView(this);
+            w.setText("正在体检…");
+            w.setTextSize(14);
+            w.setTextColor(Ui.attr(this, R.attr.textColor2));
+            w.setPadding(0, Ui.dp(this, 24), 0, 0);
+            w.setGravity(Gravity.CENTER);
+            box.addView(w);
+            pool.execute(() -> {
+                Health.Report r = Health.check(HealthActivity.this, null);
+                runOnUiThread(() -> { report = r; render(); });
+            });
+            return;
+        }
+        Health.Report r = report;
         box.removeAllViews();
-        Health.Report r = Health.check(this, breachDone ? breached : null);
 
         /* 总分 */
         box.addView(scoreCard(r));
@@ -219,6 +238,8 @@ public final class HealthActivity extends BaseActivity {
                 breachDone = res.error == null;
                 breachErr = res.error;
                 if (breachDone) breached = res.breached;
+                /* 结果里要含泄露项，重算一次 */
+                report = Health.check(HealthActivity.this, breachDone ? breached : null);
                 render();
                 if (breachDone) toast("比对完成");
             });

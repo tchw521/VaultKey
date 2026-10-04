@@ -19,6 +19,8 @@ import com.vaultkey.util.Ico;
 import com.vaultkey.util.SimpleAdapter;
 import com.vaultkey.util.Ui;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 /**
@@ -29,6 +31,8 @@ import java.util.List;
 public final class TagManagerActivity extends BaseActivity {
 
     private final List<String> tags = new ArrayList<>();
+    /** 进入页面时算一次，别在 view() 里逐行查库 */
+    private final Map<String, Integer> counts = new HashMap<>();
     private SimpleAdapter<String> ad;
     private TextView empty;
 
@@ -107,8 +111,8 @@ public final class TagManagerActivity extends BaseActivity {
                 tx.addView(n);
 
                 TextView c = new TextView(TagManagerActivity.this);
-                int cnt = Db.get(TagManagerActivity.this).tagCount(tag);
-                c.setText(cnt + " 个账号");
+                Integer cn = counts.get(tag);
+                c.setText((cn == null ? 0 : cn) + " 个账号");
                 c.setTextSize(11.5f);
                 c.setTextColor(Ui.attr(TagManagerActivity.this, R.attr.textColor2));
                 tx.addView(c);
@@ -127,7 +131,8 @@ public final class TagManagerActivity extends BaseActivity {
     private void act(int pos) {
         String tag = ad.at(pos);
         if (tag == null) return;
-        int cnt = Db.get(this).tagCount(tag);
+        Integer cn = counts.get(tag);
+        int cnt = cn == null ? 0 : cn;
         Dlg.pick(this, tag + "（" + cnt + " 个账号）",
                 new String[]{"重命名", "删除这个标签", "查看这些账号"},
                 w -> {
@@ -162,7 +167,8 @@ public final class TagManagerActivity extends BaseActivity {
     }
 
     private void remove(String tag) {
-        int cnt = Db.get(this).tagCount(tag);
+        Integer cn = counts.get(tag);
+        int cnt = cn == null ? 0 : cn;
         Dlg.danger(this, "删除标签",
                 "从 " + cnt + " 个账号上移除「" + tag + "」。\n账号本身不会删除。",
                 "移除", () -> {
@@ -180,6 +186,8 @@ public final class TagManagerActivity extends BaseActivity {
 
     private void reload() {
         tags.clear();
+        counts.clear();
+        counts.putAll(Db.get(this).tagCounts());
         List<String> all = Db.get(this).allTags();
         if (all != null) tags.addAll(all);
         ad.setData(tags);
